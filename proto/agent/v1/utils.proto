@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message Range {
+  Position start = 1;
+  Position end = 2;
+}
+
+message Position {
+  uint32 line = 1;
+  uint32 column = 2;
+}
+
+message Error {
+  string message = 1;
+}
+
+message OutputLocation {
+  string file_path = 1;
+  int64 size_bytes = 2;
+  int64 line_count = 3;
+}
+
+message SpanContext {
+  string trace_id = 1;
+  string span_id = 2;
+  optional uint32 trace_flags = 3;
+  optional string trace_state = 4;
+}
+
+message StepTiming {
+  uint64 duration_ms = 1;
+  uint64 timestamp_ms = 2;
+}
+
+enum DiagnosticSeverity {
+  DIAGNOSTIC_SEVERITY_UNSPECIFIED = 0;
+  DIAGNOSTIC_SEVERITY_ERROR = 1;
+  DIAGNOSTIC_SEVERITY_WARNING = 2;
+  DIAGNOSTIC_SEVERITY_INFORMATION = 3;
+  DIAGNOSTIC_SEVERITY_HINT = 4;
+}
+
+enum ThinkingStyle {
+  THINKING_STYLE_UNSPECIFIED = 0;
+  THINKING_STYLE_DEFAULT = 1;
+  THINKING_STYLE_CODEX = 2;
+  THINKING_STYLE_GPT5 = 3;
+}

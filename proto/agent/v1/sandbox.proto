@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package agent.v1;
+
+enum SandboxPolicy_Type {
+  TYPE_UNSPECIFIED = 0;
+  TYPE_INSECURE_NONE = 1;
+  TYPE_WORKSPACE_READWRITE = 2;
+  TYPE_WORKSPACE_READONLY = 3;
+}
+
+message SandboxPolicy {
+  SandboxPolicy_Type type = 1;
+  optional bool network_access = 2;
+  repeated string additional_readwrite_paths = 3;
+  repeated string additional_readonly_paths = 4;
+  optional string debug_output_dir = 5;
+  optional bool block_git_writes = 6;
+  optional bool disable_tmp_write = 7;
+  optional bool allowlist_escalated = 8;
+  optional bool enable_shared_build_cache = 9;
+}

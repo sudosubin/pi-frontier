@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/fetch_tool.proto";
+
+// Fetch exec messages are defined in fetch_tool.proto
+// This file serves as the exec layer interface

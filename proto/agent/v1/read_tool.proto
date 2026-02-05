@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message ReadToolCall {
+  ReadToolArgs args = 1;
+  ReadToolResult result = 2;
+}
+
+message ReadToolArgs {
+  string path = 1;
+  optional int32 offset = 2;
+  optional int32 limit = 3;
+  optional bool include_line_numbers = 5;
+}
+
+message ReadToolResult {
+  oneof result {
+    ReadToolSuccess success = 1;
+    ReadToolError error = 2;
+  }
+}
+
+message ReadRange {
+  uint32 start_line = 1;
+  uint32 end_line = 2;
+}
+
+message ReadToolSuccess {
+  bool is_empty = 2;
+  bool exceeded_limit = 3;
+  uint32 total_lines = 4;
+  uint32 file_size = 5;
+  string path = 7;
+  optional ReadRange read_range = 8;
+  oneof output {
+    string content = 1;
+    bytes data = 6;
+    bytes data_blob_id = 9;
+    bytes content_blob_id = 10;
+  }
+  optional bool include_line_numbers = 11;
+}
+
+message ReadToolError {
+  string error_message = 1;
+}

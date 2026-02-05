@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/agent.proto";
+
+service AgentService {
+  rpc Run(stream AgentClientMessage) returns (stream AgentServerMessage);
+  rpc RunSSE(BidiRequestId) returns (stream AgentServerMessage);
+  rpc NameAgent(NameAgentRequest) returns (NameAgentResponse);
+  rpc GetUsableModels(GetUsableModelsRequest) returns (GetUsableModelsResponse);
+  rpc GetDefaultModelForCli(GetDefaultModelForCliRequest) returns (GetDefaultModelForCliResponse);
+  rpc GetAllowedModelIntents(GetAllowedModelIntentsRequest) returns (GetAllowedModelIntentsResponse);
+}

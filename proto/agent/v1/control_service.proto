@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/agent.proto";
+
+// ArtifactUploadStatus is defined in agent.proto
+
+message PingResponse {
+}
+
+message ExecRequest {
+  string command = 1;
+  optional string cwd = 2;
+  repeated string args = 3;
+  map<string, string> environment = 4;
+}
+
+message ExecResponse {
+  oneof event {
+    StdoutEvent stdout_event = 1;
+    StderrEvent stderr_event = 2;
+    ExitEvent exit_event = 3;
+  }
+}
+
+message StdoutEvent {
+  string data = 1;
+}
+
+message StderrEvent {
+  string data = 1;
+}
+
+message ExitEvent {
+  int32 exit_code = 1;
+}
+
+message ReadTextFileRequest {
+  string path = 1;
+}
+
+message ReadTextFileResponse {
+  string content = 1;
+}
+
+message WriteTextFileRequest {
+  string path = 1;
+  string content = 2;
+}
+
+message WriteTextFileResponse {
+}
+
+message ReadBinaryFileRequest {
+  string path = 1;
+}
+
+message ReadBinaryFileResponse {
+  bytes content = 1;
+}
+
+message WriteBinaryFileRequest {
+  string path = 1;
+  bytes content = 2;
+}
+
+message WriteBinaryFileResponse {
+}
+
+message GetWorkspaceChangesHashRequest {
+  string root_path = 1;
+  string base_ref = 2;
+}
+
+message GetWorkspaceChangesHashResponse {
+  string hash = 1;
+}
+
+message RefreshGithubAccessTokenRequest {
+  string github_access_token = 1;
+  string hostname = 2;
+}
+
+message RefreshGithubAccessTokenResponse {
+}
+
+message WarmRemoteAccessServerRequest {
+  string commit = 1;
+  int32 port = 2;
+  string connection_token = 3;
+}
+
+message WarmRemoteAccessServerResponse {
+}
+
+message ListArtifactsRequest {
+}
+
+message ArtifactUploadMetadata {
+  string absolute_path = 1;
+  uint64 size_bytes = 2;
+  int64 updated_at_unix_ms = 3;
+  ArtifactUploadStatus status = 4;
+  uint64 bytes_uploaded = 5;
+  string last_error = 6;
+  uint32 upload_attempts = 7;
+  int64 last_started_at_unix_ms = 8;
+  int64 last_finished_at_unix_ms = 9;
+  string upload_id = 10;
+}
+
+message ListArtifactsResponse {
+  repeated ArtifactUploadMetadata artifacts = 1;
+}
+
+message UploadArtifactsRequest {
+  repeated ArtifactUploadInstruction uploads = 1;
+}
+
+message ArtifactUploadInstruction {
+  string absolute_path = 1;
+  string upload_url = 2;
+  string method = 3;
+  map<string, string> headers = 4;
+  optional string content_type = 5;
+  optional string slack_upload_url = 6;
+  optional string slack_file_id = 7;
+}
+
+message ArtifactUploadDispatchResult {
+  string absolute_path = 1;
+  ArtifactUploadDispatchStatus status = 2;
+  string message = 3;
+  optional string slack_file_id = 4;
+}
+
+message UploadArtifactsResponse {
+  repeated ArtifactUploadDispatchResult results = 1;
+}
+
+message GetMcpRefreshTokensRequest {
+}
+
+message GetMcpRefreshTokensResponse {
+  map<string, string> refresh_tokens = 1;
+}
+
+message UpdateEnvironmentVariablesRequest {
+  map<string, string> env = 1;
+  bool replace = 2;
+}
+
+message UpdateEnvironmentVariablesResponse {
+  uint32 applied = 1;
+  uint32 removed = 2;
+}
+
+service ControlService {
+  rpc ReadTextFile(ReadTextFileRequest) returns (ReadTextFileResponse);
+  rpc WriteTextFile(WriteTextFileRequest) returns (WriteTextFileResponse);
+  rpc ReadBinaryFile(ReadBinaryFileRequest) returns (ReadBinaryFileResponse);
+  rpc WriteBinaryFile(WriteBinaryFileRequest) returns (WriteBinaryFileResponse);
+  rpc GetWorkspaceChangesHash(GetWorkspaceChangesHashRequest) returns (GetWorkspaceChangesHashResponse);
+  rpc RefreshGithubAccessToken(RefreshGithubAccessTokenRequest) returns (RefreshGithubAccessTokenResponse);
+  rpc WarmRemoteAccessServer(WarmRemoteAccessServerRequest) returns (WarmRemoteAccessServerResponse);
+  rpc ListArtifacts(ListArtifactsRequest) returns (ListArtifactsResponse);
+  rpc UploadArtifacts(UploadArtifactsRequest) returns (UploadArtifactsResponse);
+  rpc GetMcpRefreshTokens(GetMcpRefreshTokensRequest) returns (GetMcpRefreshTokensResponse);
+  rpc UpdateEnvironmentVariables(UpdateEnvironmentVariablesRequest) returns (UpdateEnvironmentVariablesResponse);
+}
+
+service LifecycleService {
+  rpc ResetInstance(Empty) returns (Empty);
+  rpc RenewInstance(Empty) returns (Empty);
+}

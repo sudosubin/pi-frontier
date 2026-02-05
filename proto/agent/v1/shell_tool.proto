@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/shell_exec.proto";
+
+message ShellToolCall {
+  ShellArgs args = 1;
+  ShellResult result = 2;
+}
+
+message ShellToolCallStdoutDelta {
+  string content = 1;
+}
+
+message ShellToolCallStderrDelta {
+  string content = 1;
+}
+
+message ShellToolCallDelta {
+  oneof delta {
+    ShellToolCallStdoutDelta stdout = 1;
+    ShellToolCallStderrDelta stderr = 2;
+  }
+}

@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package agent.v1;
+
+enum CustomSubagentPermissionMode {
+  CUSTOM_SUBAGENT_PERMISSION_MODE_UNSPECIFIED = 0;
+  CUSTOM_SUBAGENT_PERMISSION_MODE_DEFAULT = 1;
+  CUSTOM_SUBAGENT_PERMISSION_MODE_READONLY = 2;
+}
+
+message TaskArgs {
+  string description = 1;
+  string prompt = 2;
+  SubagentType subagent_type = 3;
+  optional string model = 4;
+  optional string resume = 5;
+}
+
+message TaskSuccess {
+  repeated bytes conversation_steps = 1;  // ConversationStep serialized
+  optional string agent_id = 2;
+  bool is_background = 3;
+  optional uint64 duration_ms = 4;
+}
+
+message TaskError {
+  string error = 1;
+}
+
+message TaskResult {
+  oneof result {
+    TaskSuccess success = 1;
+    TaskError error = 2;
+  }
+}
+
+message TaskToolCall {
+  TaskArgs args = 1;
+  TaskResult result = 2;
+}
+
+message TaskToolCallDelta {
+  bytes interaction_update = 1;  // InteractionUpdate serialized
+}
+
+message SubagentType {
+  oneof type {
+    SubagentTypeUnspecified unspecified = 1;
+    SubagentTypeComputerUse computer_use = 2;
+    SubagentTypeCustom custom = 3;
+    SubagentTypeExplore explore = 4;
+    SubagentTypeMediaReview media_review = 5;
+    SubagentTypeBash bash = 6;
+    SubagentTypeBrowserUse browser_use = 7;
+  }
+}
+
+message SubagentTypeUnspecified {
+}
+
+message SubagentTypeComputerUse {
+}
+
+message SubagentTypeExplore {
+}
+
+message SubagentTypeCustom {
+  string name = 1;
+}
+
+message SubagentTypeBash {
+}
+
+message SubagentTypeBrowserUse {
+}
+
+message SubagentTypeMediaReview {
+}
+
+message CustomSubagent {
+  string full_path = 1;
+  string name = 2;
+  string description = 3;
+  repeated string tools = 4;
+  string model = 5;
+  string prompt = 6;
+  CustomSubagentPermissionMode permission_mode = 7;
+}
+
+message SubagentPersistedState {
+  bytes conversation_state = 1;  // ConversationStateStructure serialized
+  uint64 created_timestamp_ms = 2;
+  uint64 last_used_timestamp_ms = 3;
+  SubagentType subagent_type = 4;
+}
+
+message SubagentStartRequestQuery {
+  string subagent_id = 1;
+  string subagent_type = 2;
+  string task = 3;
+  string parent_conversation_id = 4;
+  optional string tool_call_id = 5;
+  optional string subagent_model = 6;
+  bool is_parallel_worker = 7;
+  optional string git_branch = 8;
+  optional string conversation_id = 9;
+  optional string generation_id = 10;
+  optional string model = 11;
+}
+
+message SubagentStartRequestResponse {
+  optional string permission = 1;
+  optional string user_message = 2;
+}
+
+message SubagentStopRequestQuery {
+  string subagent_id = 1;
+  string subagent_type = 2;
+  string status = 3;
+  int64 duration_ms = 4;
+  optional string summary = 5;
+  string parent_conversation_id = 6;
+  int32 message_count = 7;
+  int32 tool_call_count = 8;
+  optional string error_message = 9;
+  repeated string modified_files = 10;
+  optional string git_branch = 11;
+  optional string conversation_id = 12;
+  optional string generation_id = 13;
+  optional string model = 14;
+  int32 loop_count = 15;
+  optional string task = 16;
+  optional string description = 17;
+}
+
+message SubagentStopRequestResponse {
+  optional string followup_message = 1;
+}
+
+message CancelSubagentAction {
+  string subagent_id = 1;
+}

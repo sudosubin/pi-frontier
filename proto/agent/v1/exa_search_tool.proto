@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message ExaSearchArgs {
+  string query = 1;
+  string type = 2;
+  int32 num_results = 3;
+  string tool_call_id = 4;
+}
+
+message ExaSearchResult {
+  oneof result {
+    ExaSearchSuccess success = 1;
+    ExaSearchError error = 2;
+    ExaSearchRejected rejected = 3;
+  }
+}
+
+message ExaSearchSuccess {
+  repeated ExaSearchReference references = 1;
+}
+
+message ExaSearchError {
+  string error = 1;
+}
+
+message ExaSearchRejected {
+  string reason = 1;
+}
+
+message ExaSearchReference {
+  string title = 1;
+  string url = 2;
+  string text = 3;
+  string published_date = 4;
+}
+
+message ExaSearchToolCall {
+  ExaSearchArgs args = 1;
+  ExaSearchResult result = 2;
+}
+
+message ExaSearchRequestQuery {
+  ExaSearchArgs args = 1;
+}
+
+message ExaSearchRequestResponse {
+  oneof result {
+    ExaSearchRequestResponse_Approved approved = 1;
+    ExaSearchRequestResponse_Rejected rejected = 2;
+  }
+}
+
+message ExaSearchRequestResponse_Approved {
+}
+
+message ExaSearchRequestResponse_Rejected {
+  string reason = 1;
+}

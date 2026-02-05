@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/record_screen_tool.proto";
+
+// Record screen exec messages are defined in record_screen_tool.proto
+// This file serves as the exec layer interface

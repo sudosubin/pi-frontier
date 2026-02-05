@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/sandbox.proto";
+import "agent/v1/selected_context.proto";
+
+message LsArgs {
+  string path = 1;
+  repeated string ignore = 2;
+  string tool_call_id = 3;
+  optional SandboxPolicy sandbox_policy = 4;
+  optional uint32 timeout_ms = 5;
+}
+
+message LsResult {
+  oneof result {
+    LsSuccess success = 1;
+    LsError error = 2;
+    LsRejected rejected = 3;
+    LsTimeout timeout = 4;
+  }
+}
+
+message LsSuccess {
+  LsDirectoryTreeNode directory_tree_root = 1;
+}
+
+message LsError {
+  string path = 1;
+  string error = 2;
+}
+
+message LsRejected {
+  string path = 1;
+  string reason = 2;
+}
+
+message LsTimeout {
+  LsDirectoryTreeNode directory_tree_root = 1;
+}

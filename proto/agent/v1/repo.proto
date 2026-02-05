@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message RepositoryIndexingInfo {
+  string relative_workspace_path = 1;
+  repeated string remote_urls = 2;
+  repeated string remote_names = 3;
+  string repo_name = 4;
+  string repo_owner = 5;
+  bool is_tracked = 6;
+  bool is_local = 7;
+  optional double orthogonal_transform_seed = 8;
+  string workspace_uri = 9;
+  string path_encryption_key = 10;
+}
+
+message GitRepoInfo {
+  string path = 1;
+  string status = 2;
+  string branch_name = 3;
+  optional string remote_url = 4;
+}

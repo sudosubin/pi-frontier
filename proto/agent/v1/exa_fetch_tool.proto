@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message ExaFetchArgs {
+  repeated string ids = 1;
+  string tool_call_id = 2;
+}
+
+message ExaFetchResult {
+  oneof result {
+    ExaFetchSuccess success = 1;
+    ExaFetchError error = 2;
+    ExaFetchRejected rejected = 3;
+  }
+}
+
+message ExaFetchSuccess {
+  repeated ExaFetchContent contents = 1;
+}
+
+message ExaFetchError {
+  string error = 1;
+}
+
+message ExaFetchRejected {
+  string reason = 1;
+}
+
+message ExaFetchContent {
+  string title = 1;
+  string url = 2;
+  string text = 3;
+  string published_date = 4;
+}
+
+message ExaFetchToolCall {
+  ExaFetchArgs args = 1;
+  ExaFetchResult result = 2;
+}
+
+message ExaFetchRequestQuery {
+  ExaFetchArgs args = 1;
+}
+
+message ExaFetchRequestResponse {
+  oneof result {
+    ExaFetchRequestResponse_Approved approved = 1;
+    ExaFetchRequestResponse_Rejected rejected = 2;
+  }
+}
+
+message ExaFetchRequestResponse_Approved {
+}
+
+message ExaFetchRequestResponse_Rejected {
+  string reason = 1;
+}

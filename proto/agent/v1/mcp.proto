@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message McpToolDefinition {
+  string name = 1;
+  string provider_identifier = 4;
+  string tool_name = 5;
+  string description = 2;
+  bytes input_schema = 3;
+}
+
+message McpTools {
+  repeated McpToolDefinition mcp_tools = 1;
+}
+
+message McpInstructions {
+  string server_name = 1;
+  string instructions = 2;
+}
+
+message McpDescriptor {
+  string server_name = 1;
+  string server_identifier = 2;
+  optional string folder_path = 3;
+  optional string server_use_instructions = 4;
+  repeated McpToolDescriptor tools = 5;
+}
+
+message McpToolDescriptor {
+  string tool_name = 1;
+  optional string definition_path = 2;
+}
+
+message McpFileSystemOptions {
+  bool enabled = 1;
+  string workspace_project_dir = 2;
+  repeated McpDescriptor mcp_descriptors = 3;
+}

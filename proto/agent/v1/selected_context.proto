@@ -1,0 +1,299 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/utils.proto";
+import "agent/v1/cursor_rules.proto";
+
+message SelectedImage {
+  string uuid = 2;
+  string path = 3;
+  SelectedImage_Dimension dimension = 4;
+  string mime_type = 7;
+  oneof data_or_blob_id {
+    bytes blob_id = 1;
+    bytes data = 8;
+    SelectedImage_BlobIdWithData blob_id_with_data = 9;
+  }
+}
+
+message SelectedImage_BlobIdWithData {
+  bytes blob_id = 1;
+  bytes data = 2;
+}
+
+message SelectedImage_Dimension {
+  int32 width = 1;
+  int32 height = 2;
+}
+
+message SelectedVideo {
+  oneof data_or_blob_id {
+    bytes blob_id = 1;
+    bytes data = 8;
+    SelectedVideo_BlobIdWithData blob_id_with_data = 9;
+  }
+  string uuid = 2;
+  string path = 3;
+  optional float fps = 4;
+  string mime_type = 7;
+}
+
+message SelectedVideo_BlobIdWithData {
+  bytes blob_id = 1;
+  bytes data = 2;
+}
+
+message ExtraContextEntry {
+  oneof data_or_blob_id {
+    string data = 1;
+    bytes blob_id = 2;
+  }
+}
+
+message SelectedFile {
+  string content = 1;
+  string path = 2;
+  optional string relative_path = 3;
+}
+
+message SelectedCodeSelection {
+  string content = 1;
+  string path = 2;
+  optional string relative_path = 3;
+  Range range = 4;
+}
+
+message SelectedTerminal {
+  string content = 1;
+  optional string title = 2;
+  optional string path = 3;
+}
+
+message SelectedTerminalSelection {
+  string content = 1;
+  optional string title = 2;
+  optional string path = 3;
+  Range range = 4;
+}
+
+message SelectedFolder {
+  string path = 1;
+  optional string relative_path = 2;
+  LsDirectoryTreeNode directory_tree = 3;
+}
+
+message LsDirectoryTreeNode {
+  string abs_path = 1;
+  repeated LsDirectoryTreeNode children_dirs = 2;
+  repeated LsDirectoryTreeNode_File children_files = 3;
+  bool children_were_processed = 4;
+  map<string, int32> full_subtree_extension_counts = 5;
+  int32 num_files = 6;
+}
+
+message LsDirectoryTreeNode_File {
+  string name = 1;
+  optional TerminalMetadata terminal_metadata = 2;
+}
+
+message TerminalMetadata {
+  optional string cwd = 1;
+  repeated TerminalMetadata_Command last_commands = 2;
+  optional int64 last_modified_ms = 3;
+  optional TerminalMetadata_Command current_command = 4;
+}
+
+message TerminalMetadata_Command {
+  string command = 1;
+  optional int32 exit_code = 2;
+  optional int64 timestamp_ms = 3;
+  optional int64 duration_ms = 4;
+}
+
+message SelectedExternalLink {
+  string url = 1;
+  string uuid = 2;
+  optional string pdf_content = 3;
+  optional bool is_pdf = 4;
+  optional string filename = 5;
+}
+
+message SelectedCursorRule {
+  CursorRule rule = 1;
+}
+
+message SelectedGitDiff {
+  string content = 1;
+}
+
+message SelectedGitDiffFromBranchToMain {
+  string content = 1;
+}
+
+message SelectedGitCommit {
+  string sha = 1;
+  string message = 2;
+  optional string description = 3;
+  string diff = 4;
+}
+
+message SelectedPullRequest {
+  int32 number = 1;
+  string url = 2;
+  optional string title = 3;
+  string folder_path = 4;
+  optional string summary_json = 5;
+  optional string description = 6;
+  optional bytes blob_id = 7;
+}
+
+message SelectedGitPRDiffSelection {
+  string pr_url = 1;
+  string file_path = 2;
+  int32 start_line = 3;
+  int32 end_line = 4;
+  optional string diff_content = 5;
+  optional bytes blob_id = 6;
+}
+
+message SelectedCursorCommand {
+  string name = 1;
+  string content = 2;
+}
+
+message SelectedDocumentation {
+  string doc_id = 1;
+  string name = 2;
+}
+
+message SelectedPastChat {
+  string agent_id = 1;
+  string name = 2;
+}
+
+message CallFrame {
+  optional string function_name = 1;
+  optional string url = 2;
+  optional int32 line_number = 3;
+  optional int32 column_number = 4;
+}
+
+message StackTrace {
+  repeated CallFrame call_frames = 1;
+  optional string raw_stack_trace = 2;
+}
+
+message SelectedConsoleLog {
+  string message = 1;
+  double timestamp = 2;
+  string level = 3;
+  string client_name = 4;
+  string session_id = 5;
+  optional StackTrace stack_trace = 6;
+  optional string object_data_json = 7;
+}
+
+message SelectedUIElement {
+  string element = 1;
+  string xpath = 2;
+  string text_content = 3;
+  string extra = 4;
+  optional string component = 5;
+  optional string component_props_json = 6;
+}
+
+message SelectedSubagent {
+  string name = 1;
+}
+
+message InvocationContext {
+  oneof data {
+    InvocationContext_SlackThread slack_thread = 1;
+    InvocationContext_GithubPR github_pr = 2;
+    InvocationContext_IdeState ide_state = 3;
+    bytes blob_id = 10;
+  }
+}
+
+message InvocationContext_SlackThread {
+  string thread = 1;
+  optional string channel_name = 2;
+  optional string channel_purpose = 3;
+  optional string channel_topic = 4;
+}
+
+message InvocationContext_GithubPR {
+  string title = 1;
+  string description = 2;
+  string comments = 3;
+  optional string ci_failures = 4;
+}
+
+message InvocationContext_IdeState {
+  repeated InvocationContext_IdeState_File visible_files = 1;
+  repeated InvocationContext_IdeState_File recently_viewed_files = 2;
+  repeated InvocationContext_IdeState_ViewedPullRequest currently_viewed_prs = 3;
+}
+
+message InvocationContext_IdeState_File {
+  string path = 1;
+  optional string relative_path = 2;
+  optional InvocationContext_IdeState_File_CursorPosition cursor_position = 3;
+  int32 total_lines = 4;
+  optional string active_command = 5;
+}
+
+message InvocationContext_IdeState_File_CursorPosition {
+  int32 line = 1;
+  string text = 2;
+}
+
+message InvocationContext_IdeState_ViewedPullRequest {
+  int32 number = 1;
+  string url = 2;
+  optional string title = 3;
+  optional string folder_path = 4;
+  optional string summary_json = 5;
+  optional string description = 6;
+}
+
+message SelectedContext {
+  repeated SelectedImage selected_images = 1;
+  optional InvocationContext invocation_context = 2;
+  repeated string extra_context = 3;
+  repeated ExtraContextEntry extra_context_entries = 16;
+  repeated SelectedFile files = 4;
+  repeated SelectedCodeSelection code_selections = 5;
+  repeated SelectedTerminal terminals = 6;
+  repeated SelectedTerminalSelection terminal_selections = 7;
+  repeated SelectedFolder folders = 8;
+  repeated SelectedExternalLink external_links = 9;
+  repeated SelectedCursorRule cursor_rules = 10;
+  optional SelectedGitDiff git_diff = 18;
+  optional SelectedGitDiffFromBranchToMain git_diff_from_branch_to_main = 11;
+  repeated SelectedCursorCommand cursor_commands = 12;
+  repeated SelectedDocumentation documentations = 13;
+  repeated SelectedUIElement ui_elements = 14;
+  repeated SelectedConsoleLog console_logs = 15;
+  repeated SelectedGitCommit git_commits = 17;
+  repeated SelectedPastChat past_chats = 19;
+  repeated SelectedGitPRDiffSelection git_pr_diff_selections = 20;
+  repeated SelectedPullRequest selected_pull_requests = 21;
+  repeated SelectedSubagent selected_subagents = 22;
+  repeated SelectedVideo selected_videos = 23;
+}
+
+message ImageProto {
+  bytes data = 1;
+  string uuid = 2;
+  string path = 3;
+  ImageProto_Dimension dimension = 4;
+  optional string task_specific_description = 6;
+  string mime_type = 7;
+}
+
+message ImageProto_Dimension {
+  int32 width = 1;
+  int32 height = 2;
+}

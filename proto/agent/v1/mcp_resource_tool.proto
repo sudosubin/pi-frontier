@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package agent.v1;
+
+message ListMcpResourcesToolCall {
+  ListMcpResourcesExecArgs args = 1;
+  ListMcpResourcesExecResult result = 2;
+}
+
+message ReadMcpResourceToolCall {
+  ReadMcpResourceExecArgs args = 1;
+  ReadMcpResourceExecResult result = 2;
+}
+
+message ListMcpResourcesExecArgs {
+  optional string server = 1;
+}
+
+message ListMcpResourcesExecResult {
+  oneof result {
+    ListMcpResourcesSuccess success = 1;
+    ListMcpResourcesError error = 2;
+    ListMcpResourcesRejected rejected = 3;
+  }
+}
+
+message ListMcpResourcesExecResult_McpResource {
+  string uri = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string mime_type = 4;
+  string server = 5;
+  map<string, string> annotations = 6;
+}
+
+message ListMcpResourcesSuccess {
+  repeated ListMcpResourcesExecResult_McpResource resources = 1;
+}
+
+message ListMcpResourcesError {
+  string error = 1;
+}
+
+message ListMcpResourcesRejected {
+  string reason = 1;
+}
+
+message ReadMcpResourceExecArgs {
+  string server = 1;
+  string uri = 2;
+  optional string download_path = 3;
+}
+
+message ReadMcpResourceExecResult {
+  oneof result {
+    ReadMcpResourceSuccess success = 1;
+    ReadMcpResourceError error = 2;
+    ReadMcpResourceRejected rejected = 3;
+    ReadMcpResourceNotFound not_found = 4;
+  }
+}
+
+message ReadMcpResourceSuccess {
+  string uri = 1;
+  optional string name = 2;
+  optional string description = 3;
+  optional string mime_type = 4;
+  map<string, string> annotations = 7;
+  optional string download_path = 8;
+  oneof content {
+    string text = 5;
+    bytes blob = 6;
+  }
+}
+
+message ReadMcpResourceError {
+  string uri = 1;
+  string error = 2;
+}
+
+message ReadMcpResourceRejected {
+  string uri = 1;
+  string reason = 2;
+}
+
+message ReadMcpResourceNotFound {
+  string uri = 1;
+}

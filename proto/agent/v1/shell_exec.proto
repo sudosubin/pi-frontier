@@ -1,0 +1,168 @@
+syntax = "proto3";
+
+package agent.v1;
+
+import "agent/v1/sandbox.proto";
+import "agent/v1/utils.proto";
+
+enum TimeoutBehavior {
+  TIMEOUT_BEHAVIOR_UNSPECIFIED = 0;
+  TIMEOUT_BEHAVIOR_CANCEL = 1;
+  TIMEOUT_BEHAVIOR_BACKGROUND = 2;
+}
+
+enum ShellAbortReason {
+  SHELL_ABORT_REASON_UNSPECIFIED = 0;
+  SHELL_ABORT_REASON_USER_ABORT = 1;
+  SHELL_ABORT_REASON_TIMEOUT = 2;
+}
+
+message ShellCommandParsingResult {
+  bool parsing_failed = 1;
+  repeated ShellCommandParsingResult_ExecutableCommand executable_commands = 2;
+  bool has_redirects = 3;
+  bool has_command_substitution = 4;
+}
+
+message ShellCommandParsingResult_ExecutableCommandArg {
+  string type = 1;
+  string value = 2;
+}
+
+message ShellCommandParsingResult_ExecutableCommand {
+  string name = 1;
+  repeated ShellCommandParsingResult_ExecutableCommandArg args = 2;
+  string full_text = 3;
+}
+
+message ShellArgs {
+  string command = 1;
+  string working_directory = 2;
+  int32 timeout = 3;
+  string tool_call_id = 4;
+  repeated string simple_commands = 5;
+  bool has_input_redirect = 6;
+  bool has_output_redirect = 7;
+  ShellCommandParsingResult parsing_result = 8;
+  optional SandboxPolicy requested_sandbox_policy = 9;
+  optional uint64 file_output_threshold_bytes = 10;
+  bool is_background = 11;
+  bool skip_approval = 12;
+  TimeoutBehavior timeout_behavior = 13;
+  optional int32 hard_timeout = 14;
+}
+
+message ShellResult {
+  optional SandboxPolicy sandbox_policy = 101;
+  optional bool is_background = 102;
+  optional string terminals_folder = 103;
+  optional uint32 pid = 104;
+  oneof result {
+    ShellSuccess success = 1;
+    ShellFailure failure = 2;
+    ShellTimeout timeout = 3;
+    ShellRejected rejected = 4;
+    ShellSpawnError spawn_error = 5;
+    ShellPermissionDenied permission_denied = 7;
+  }
+}
+
+message ShellStreamStdout {
+  string data = 1;
+}
+
+message ShellStreamStderr {
+  string data = 1;
+}
+
+message ShellStreamExit {
+  uint32 code = 1;
+  string cwd = 2;
+  optional OutputLocation output_location = 3;
+  bool aborted = 4;
+  optional ShellAbortReason abort_reason = 5;
+}
+
+message ShellStreamStart {
+  optional SandboxPolicy sandbox_policy = 1;
+}
+
+message ShellStreamBackgrounded {
+  uint32 shell_id = 1;
+  string command = 2;
+  string working_directory = 3;
+  optional uint32 pid = 4;
+  optional int32 ms_to_wait = 5;
+}
+
+message ShellStream {
+  oneof event {
+    ShellStreamStdout stdout = 1;
+    ShellStreamStderr stderr = 2;
+    ShellStreamExit exit = 3;
+    ShellStreamStart start = 4;
+    ShellRejected rejected = 5;
+    ShellPermissionDenied permission_denied = 6;
+    ShellStreamBackgrounded backgrounded = 7;
+  }
+}
+
+message ShellSuccess {
+  string command = 1;
+  string working_directory = 2;
+  int32 exit_code = 3;
+  string signal = 4;
+  string stdout = 5;
+  string stderr = 6;
+  int32 execution_time = 7;
+  optional OutputLocation output_location = 8;
+  optional uint32 shell_id = 9;
+  optional string interleaved_output = 10;
+  optional uint32 pid = 11;
+  optional int32 ms_to_wait = 12;
+}
+
+message ShellFailure {
+  string command = 1;
+  string working_directory = 2;
+  int32 exit_code = 3;
+  string signal = 4;
+  string stdout = 5;
+  string stderr = 6;
+  int32 execution_time = 7;
+  optional OutputLocation output_location = 8;
+  optional string interleaved_output = 9;
+  optional ShellAbortReason abort_reason = 10;
+  bool aborted = 11;
+}
+
+message ShellTimeout {
+  string command = 1;
+  string working_directory = 2;
+  int32 timeout_ms = 3;
+}
+
+message ShellRejected {
+  string command = 1;
+  string working_directory = 2;
+  string reason = 3;
+  bool is_readonly = 4;
+}
+
+message ShellPermissionDenied {
+  string command = 1;
+  string working_directory = 2;
+  string error = 3;
+  bool is_readonly = 4;
+}
+
+message ShellSpawnError {
+  string command = 1;
+  string working_directory = 2;
+  string error = 3;
+}
+
+message ShellPartialResult {
+  string stdout_delta = 1;
+  string stderr_delta = 2;
+}
