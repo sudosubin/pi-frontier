@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package aiserver.v1;
+
+import "agent/v1/agent.proto";
+
+// AiService provides AI-related operations.
+// Only GetUsableModels and GetDefaultModelForCli are used by CLI.
+service AiService {
+  // Only used in CLI for now
+  rpc GetUsableModels(agent.v1.GetUsableModelsRequest) returns (agent.v1.GetUsableModelsResponse);
+  rpc GetDefaultModelForCli(agent.v1.GetDefaultModelForCliRequest) returns (agent.v1.GetDefaultModelForCliResponse);
+}
