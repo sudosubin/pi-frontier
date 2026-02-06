@@ -25,6 +25,19 @@
     "src/**/*.ts",
     "README.md"
   ],
+  "scripts": {
+    "proto:generate": "buf generate"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "1.10.0",
+    "@connectrpc/connect": "^1.7.0",
+    "@connectrpc/connect-node": "^1.7.0"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.65.0",
+    "@bufbuild/protoc-gen-es": "1.10.0",
+    "@connectrpc/protoc-gen-connect-es": "^1.7.0"
+  },
   "peerDependencies": {
     "@mariozechner/pi-ai": ">=0.49.0",
     "@mariozechner/pi-coding-agent": ">=0.49.0"
