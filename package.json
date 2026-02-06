@@ -26,6 +26,8 @@
     "README.md"
   ],
   "scripts": {
+    "typecheck": "tsc",
+    "typecheck:watch": "tsc --watch",
     "proto:generate": "buf generate"
   },
   "dependencies": {
@@ -36,7 +38,10 @@
   "devDependencies": {
     "@bufbuild/buf": "^1.65.0",
     "@bufbuild/protoc-gen-es": "1.10.0",
-    "@connectrpc/protoc-gen-connect-es": "^1.7.0"
+    "@connectrpc/protoc-gen-connect-es": "^1.7.0",
+    "@tsconfig/strictest": "^2.0.8",
+    "@types/node": "^24.10.10",
+    "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "@mariozechner/pi-ai": ">=0.49.0",
