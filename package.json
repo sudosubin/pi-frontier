@@ -1,0 +1,32 @@
+{
+  "name": "pi-cursor-agent",
+  "version": "0.1.0",
+  "description": "Cursor Agent provider extension for pi",
+  "type": "module",
+  "license": "MIT",
+  "author": "sudosubin",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sudosubin/pi-cursor-agent.git"
+  },
+  "keywords": [
+    "pi",
+    "cursor",
+    "cursor-agent",
+    "ai",
+    "llm"
+  ],
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "files": [
+    "src/**/*.ts",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@mariozechner/pi-ai": ">=0.49.0",
+    "@mariozechner/pi-coding-agent": ">=0.49.0"
+  }
+}
