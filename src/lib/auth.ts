@@ -3,6 +3,9 @@ import { OAuthLoginCallbacks } from "@mariozechner/pi-ai";
 import Auth from "../api/auth";
 import { backoff } from "./backoff";
 
+type OnAuth = (info: { url: string; instructions: string }) => void;
+type OnProgress = (message: string) => void;
+
 class AuthManager {
   constructor(
     private readonly auth: Auth,
@@ -14,8 +17,8 @@ class AuthManager {
     onProgress,
     signal,
   }: {
-    onAuth: OAuthLoginCallbacks["onAuth"];
-    onProgress?: OAuthLoginCallbacks["onProgress"];
+    onAuth: OnAuth;
+    onProgress?: OnProgress;
     signal?: AbortSignal;
   }) {
     const { uuid, verifier, loginUrl } = this.generateAuthParams();
@@ -87,7 +90,9 @@ class AuthManager {
         retries: 150,
         delay: 1000,
         shouldRetry: (error) =>
-          error instanceof Error && error.message.includes("Poll failed 404"),
+          error instanceof Error &&
+          error.message.includes("/auth/poll") &&
+          error.message.includes("404"),
       },
     );
   }

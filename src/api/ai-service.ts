@@ -4,12 +4,7 @@ import {
   type Interceptor,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import {
-  AgentClientMessage,
-  type AgentServerMessage,
-} from "../__generated__/agent/v1/agent_pb";
-import { AgentService as AgentServiceDef } from "../__generated__/agent/v1/agent_service_connect";
-import type { AgentRpcClient } from "../vendor/agent-client";
+import { AiService as AiServiceDef } from "../__generated__/aiserver/v1/aiserver_service_connect";
 
 export interface AgentServiceOptions {
   accessToken: string;
@@ -17,8 +12,8 @@ export interface AgentServiceOptions {
   clientVersion: string;
 }
 
-class AgentService {
-  private readonly client: Client<typeof AgentServiceDef>;
+class AiService {
+  private readonly client: Client<typeof AiServiceDef>;
 
   constructor(baseUrl: string, options: AgentServiceOptions) {
     const authInterceptor: Interceptor = (next) => async (req) => {
@@ -32,24 +27,16 @@ class AgentService {
 
     const transport = createConnectTransport({
       baseUrl,
-      httpVersion: "2",
+      httpVersion: "1.1",
       interceptors: [authInterceptor],
     });
 
-    this.client = createClient(AgentServiceDef, transport);
+    this.client = createClient(AiServiceDef, transport);
   }
 
-  get rpcClient(): AgentRpcClient {
-    const client = this.client;
-    return {
-      run(
-        input: AsyncIterable<AgentClientMessage>,
-        options?: { signal?: AbortSignal; headers?: Record<string, string> },
-      ): AsyncIterable<AgentServerMessage> {
-        return client.run(input, options);
-      },
-    };
+  public async getUsableModels() {
+    return this.client.getUsableModels({});
   }
 }
 
-export default AgentService;
+export default AiService;
