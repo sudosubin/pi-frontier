@@ -2,6 +2,8 @@
 
 [![npm](https://img.shields.io/npm/v/pi-cursor-agent)](https://www.npmjs.com/package/pi-cursor-agent)
 
+![terminal](./assets/terminal.avif)
+
 Cursor Agent provider extension for [pi](https://github.com/badlogic/pi-mono).
 
 Use [Cursor](https://cursor.com/)'s AI models directly from pi with your existing Cursor subscription. Supports Claude, GPT, Gemini, Grok, and Composer models — including thinking/reasoning variants.
