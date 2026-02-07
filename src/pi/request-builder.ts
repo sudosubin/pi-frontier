@@ -7,6 +7,7 @@ import type {
   Tool,
   ToolResultMessage,
 } from "@mariozechner/pi-ai";
+import { type JsonValue, Value } from "@bufbuild/protobuf";
 import {
   AgentClientMessage,
   AgentConversationTurnStructure,
@@ -159,11 +160,11 @@ export function buildMcpToolDefinitions(
 
   return advertisedTools.map((tool) => {
     const jsonSchema = tool.parameters as Record<string, unknown> | undefined;
-    const schemaValue =
+    const schemaValue: JsonValue =
       jsonSchema && typeof jsonSchema === "object"
-        ? jsonSchema
+        ? (jsonSchema as JsonValue)
         : { type: "object", properties: {}, required: [] };
-    const inputSchema = new TextEncoder().encode(JSON.stringify(schemaValue));
+    const inputSchema = new Uint8Array(Value.fromJson(schemaValue).toBinary());
     return new McpToolDefinitionClass({
       name: tool.name,
       description: tool.description,
