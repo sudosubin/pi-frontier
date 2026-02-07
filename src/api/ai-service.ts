@@ -6,7 +6,7 @@ import {
 import { createConnectTransport } from "@connectrpc/connect-node";
 import { AiService as AiServiceDef } from "../__generated__/aiserver/v1/aiserver_service_connect";
 
-export interface AgentServiceOptions {
+interface AgentServiceOptions {
   accessToken: string;
   clientType: string;
   clientVersion: string;

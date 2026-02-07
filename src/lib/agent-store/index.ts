@@ -7,7 +7,7 @@ import {
 } from "./disk";
 import { JsonBlobStoreWithMetadata } from "./json-blob-store";
 
-export interface StoreEntry {
+interface StoreEntry {
   store: AgentStore;
   jsonStore: JsonBlobStoreWithMetadata;
 }

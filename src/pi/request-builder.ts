@@ -43,7 +43,7 @@ const CURSOR_NATIVE_TOOL_NAMES = new Set([
 
 type ContextWithTools = Context & { tools?: Tool[] };
 
-export function extractUserMessageText(msg: Message): string {
+function extractUserMessageText(msg: Message): string {
   if (msg.role !== "user") return "";
   if (typeof msg.content === "string") return msg.content.trim();
   return msg.content
@@ -53,7 +53,7 @@ export function extractUserMessageText(msg: Message): string {
     .trim();
 }
 
-export function extractAssistantMessageText(msg: Message): string {
+function extractAssistantMessageText(msg: Message): string {
   if (msg.role !== "assistant") return "";
   if (!Array.isArray(msg.content)) return "";
   return msg.content
@@ -62,7 +62,7 @@ export function extractAssistantMessageText(msg: Message): string {
     .join("\n");
 }
 
-export function buildConversationTurns(messages: Message[]): Uint8Array[] {
+function buildConversationTurns(messages: Message[]): Uint8Array[] {
   const turns: Uint8Array[] = [];
 
   let i = 0;
@@ -145,7 +145,7 @@ export function buildConversationTurns(messages: Message[]): Uint8Array[] {
   return turns;
 }
 
-export function buildMcpToolDefinitions(
+function buildMcpToolDefinitions(
   tools: Tool[] | undefined,
 ): McpToolDefinition[] {
   if (!tools || tools.length === 0) {
@@ -176,7 +176,7 @@ export function buildMcpToolDefinitions(
   });
 }
 
-export interface BuildRunRequestParams {
+interface BuildRunRequestParams {
   model: Model<Api>;
   context: Context;
   conversationId: string;
@@ -185,7 +185,7 @@ export interface BuildRunRequestParams {
   mcpToolDefinitions?: McpToolDefinition[];
 }
 
-export interface BuildRunRequestResult {
+interface BuildRunRequestResult {
   initialRequest: AgentClientMessage;
   conversationState: ConversationStateStructure;
 }

@@ -103,7 +103,7 @@ type JwtPayload = {
   [key: string]: unknown;
 };
 
-export const base64URLEncode = (buffer: Buffer) => {
+const base64URLEncode = (buffer: Buffer) => {
   return buffer
     .toString("base64")
     .replace(/\+/g, "-")
@@ -111,7 +111,7 @@ export const base64URLEncode = (buffer: Buffer) => {
     .replace(/=/g, "");
 };
 
-export const decodeJwt = (token: string): JwtPayload | null => {
+const decodeJwt = (token: string): JwtPayload | null => {
   try {
     const parts = token.split(".");
     if (parts.length !== 3) return null;

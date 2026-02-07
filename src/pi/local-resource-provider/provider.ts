@@ -43,7 +43,7 @@ import {
   StubComputerUseExecutor,
 } from "../executors/stubs";
 
-export interface LocalResourceProviderOptions {
+interface LocalResourceProviderOptions {
   ctx: PiToolContext;
   requestContextTools?: McpToolDefinition[];
   workspacePaths?: string[];

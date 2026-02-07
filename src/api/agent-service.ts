@@ -11,7 +11,7 @@ import {
 import { AgentService as AgentServiceDef } from "../__generated__/agent/v1/agent_service_connect";
 import type { AgentRpcClient } from "../vendor/agent-client";
 
-export interface AgentServiceOptions {
+interface AgentServiceOptions {
   accessToken: string;
   clientType: string;
   clientVersion: string;

@@ -19,6 +19,7 @@ import {
   AskQuestionResult,
 } from "./__generated__/agent/v1/ask_question_tool_pb";
 import AgentService from "./api/agent-service";
+import { CURSOR_API_URL, CURSOR_CLIENT_VERSION } from "./lib/env";
 import { toCursorId } from "./pi/model-mapping";
 import { buildRunRequest, getContextTools } from "./pi/request-builder";
 import {
@@ -41,9 +42,6 @@ import type {
   CoreInteractionQuery,
   CoreInteractionResponse,
 } from "./vendor/agent-core";
-
-export const CURSOR_API_URL = "https://api2.cursor.sh";
-const CURSOR_CLIENT_VERSION = "cli-2026.01.17-d239e66";
 
 function createCheckpointHandler(
   handler: (checkpoint: ConversationStateStructure) => void,
