@@ -25,6 +25,7 @@ import {
 import {
   type McpToolDefinition,
   McpToolDefinition as McpToolDefinitionClass,
+  McpTools,
 } from "../__generated__/agent/v1/mcp_pb";
 import { toolResultToText } from "./utils/tool-result";
 import { getBlobId, type BlobStore } from "../vendor/agent-kv";
@@ -181,6 +182,7 @@ export interface BuildRunRequestParams {
   conversationId: string;
   blobStore: BlobStore;
   conversationState: ConversationStateStructure | undefined;
+  mcpToolDefinitions?: McpToolDefinition[];
 }
 
 export interface BuildRunRequestResult {
@@ -253,11 +255,13 @@ export function buildRunRequest(
     displayName: params.model.name,
   });
 
+  const mcpToolDefinitions = params.mcpToolDefinitions ?? [];
   const runRequest = new AgentRunRequest({
     conversationState,
     action,
     modelDetails,
     conversationId: params.conversationId,
+    mcpTools: new McpTools({ mcpTools: mcpToolDefinitions }),
   });
 
   const initialRequest = new AgentClientMessage({
