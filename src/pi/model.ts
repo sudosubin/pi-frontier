@@ -8,14 +8,16 @@ import {
 import AiService from "../api/ai-service";
 import { CURSOR_API_URL } from "../lib/env";
 import { PI_CURSOR_AGENT_CACHE_DIR } from "./env";
+import { toCanonicalId } from "./model-mapping";
 import { findPiModelOverride, PiModelOverride } from "./model-override";
 
 const applyPiModelOverride = (
+  id: string,
   model: ModelDetails,
   override: PiModelOverride,
 ) => {
   return {
-    id: model.modelId,
+    id,
     name: `${model.displayName} (Cursor)`,
     api: "cursor-agent",
     provider: "cursor-agent",
@@ -31,10 +33,19 @@ export const getCachedPiModels = (): Model<Api>[] => {
     if (fs.existsSync(cachedPath)) {
       const raw = fs.readFileSync(cachedPath, "utf8");
       const response = JSON.parse(raw) as GetUsableModelsResponse;
-      return response.models.map((model) => {
-        const override = findPiModelOverride(model.modelId);
-        return applyPiModelOverride(model, override);
-      });
+      return response.models
+        .map((model) => ({
+          model,
+          canonicalId: toCanonicalId(model.modelId),
+        }))
+        .filter(
+          (entry): entry is { model: ModelDetails; canonicalId: string } =>
+            entry.canonicalId !== null,
+        )
+        .map(({ model, canonicalId }) => {
+          const override = findPiModelOverride(canonicalId);
+          return applyPiModelOverride(canonicalId, model, override);
+        });
     }
   } catch {}
   return [];

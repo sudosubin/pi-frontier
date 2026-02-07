@@ -19,6 +19,7 @@ import {
   AskQuestionResult,
 } from "./__generated__/agent/v1/ask_question_tool_pb";
 import AgentService from "./api/agent-service";
+import { toCursorId } from "./pi/model-mapping";
 import { buildRunRequest, getContextTools } from "./pi/request-builder";
 import {
   CURSOR_STATE_ENTRY_TYPE,
@@ -173,8 +174,9 @@ export function streamCursorAgent(
       });
 
       const blobStore = agentStore.getBlobStore();
+      const cursorModelId = toCursorId(model.id, options?.reasoning);
       const { initialRequest, conversationState } = buildRunRequest({
-        model,
+        model: { ...model, id: cursorModelId },
         context,
         conversationId: agentStore.getId(),
         blobStore,
