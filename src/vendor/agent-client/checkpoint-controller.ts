@@ -5,6 +5,7 @@ export interface CheckpointHandler {
     ctx: unknown,
     checkpoint: ConversationStateStructure,
   ): Promise<void>;
+  getLatestCheckpoint?: () => ConversationStateStructure | undefined;
 }
 
 export class CheckpointController {

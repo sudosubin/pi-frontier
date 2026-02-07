@@ -328,6 +328,8 @@ export function streamCursorAgent(
           }
         },
       );
+      checkpointHandler.getLatestCheckpoint = () =>
+        agentStore.getConversationStateStructure();
 
       const runOptions: Parameters<typeof connectClient.run>[1] = {
         interactionListener,

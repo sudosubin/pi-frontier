@@ -1,10 +1,16 @@
 import { createWritableIterable } from "@connectrpc/connect/protocol";
 import {
   AgentClientMessage,
+  AgentRunRequest,
   type AgentServerMessage,
   ClientHeartbeat,
+  ConversationAction,
+  type ConversationStateStructure,
   type InteractionResponse,
+  type ModelDetails,
+  ResumeAction,
 } from "../../__generated__/agent/v1/agent_pb";
+import type { McpTools } from "../../__generated__/agent/v1/mcp_pb";
 import {
   ExecClientControlMessage,
   ExecClientMessage,
@@ -100,26 +106,98 @@ export class AgentConnectClient {
     initialRequest: AgentClientMessage,
     options: AgentConnectRunOptions,
   ): Promise<void> {
-    let attempt = 0;
+    const runRequest = initialRequest.message.value as AgentRunRequest;
 
+    // Retry state
+    let currentState = runRequest.conversationState;
+    let currentAction = runRequest.action!;
+    const modelDetails = runRequest.modelDetails;
+    const mcpTools = runRequest.mcpTools;
+    const conversationId = runRequest.conversationId;
+    let attempt = 0;
+    const receivedNewCheckpoint = { value: false };
+
+    // Helper: switch to ResumeAction if we received a checkpoint
+    const maybeResumeFromCheckpoint = () => {
+      if (!receivedNewCheckpoint.value) return;
+      const checkpoint = options.checkpointHandler.getLatestCheckpoint?.();
+      if (!checkpoint) return;
+      currentState = checkpoint;
+      currentAction = new ConversationAction({
+        action: { case: "resumeAction", value: new ResumeAction() },
+      });
+    };
+
+    // Wrap checkpoint handler to track when we receive new checkpoints
+    const trackingCheckpointHandler: CheckpointHandler = {
+      async handleCheckpoint(
+        ctx: unknown,
+        checkpoint: ConversationStateStructure,
+      ): Promise<void> {
+        receivedNewCheckpoint.value = true;
+        return options.checkpointHandler.handleCheckpoint(ctx, checkpoint);
+      },
+      getLatestCheckpoint: () =>
+        options.checkpointHandler.getLatestCheckpoint?.(),
+    };
+
+    // Main retry loop
     while (true) {
       if (options.signal?.aborted) {
         throw new Error("Request cancelled");
       }
 
+      // Reset per-attempt flags
+      receivedNewCheckpoint.value = false;
+
       try {
-        await this.runInternal(initialRequest, options);
+        const request = this.buildRequest(
+          currentState,
+          currentAction,
+          modelDetails,
+          mcpTools,
+          conversationId,
+        );
+
+        await this.runInternal(request, {
+          ...options,
+          checkpointHandler: trackingCheckpointHandler,
+        });
         return;
       } catch (error) {
         if (!isRetriableError(error) || attempt >= MAX_RETRY_ATTEMPTS) {
           throw error;
         }
 
+        // Retry: notify UI, maybe resume from checkpoint, backoff
         options.onConnectionStateChange?.({ state: "reconnecting" });
+        maybeResumeFromCheckpoint();
+
         attempt++;
         await backoff(attempt, options.signal);
       }
     }
+  }
+
+  private buildRequest(
+    conversationState: ConversationStateStructure | undefined,
+    action: ConversationAction,
+    modelDetails: ModelDetails | undefined,
+    mcpTools: McpTools | undefined,
+    conversationId: string | undefined,
+  ): AgentClientMessage {
+    return new AgentClientMessage({
+      message: {
+        case: "runRequest",
+        value: new AgentRunRequest({
+          ...(conversationState ? { conversationState } : {}),
+          action,
+          ...(modelDetails ? { modelDetails } : {}),
+          ...(mcpTools ? { mcpTools } : {}),
+          ...(conversationId ? { conversationId } : {}),
+        }),
+      },
+    });
   }
 
   /**
