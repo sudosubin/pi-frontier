@@ -14,8 +14,16 @@ const overrides = [
   {
     id: /^composer-1$/,
     reasoning: false,
-    input: ["text"],
+    input: ["text", "image"],
     cost: { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite: 1.25 },
+    contextWindow: 200000,
+    maxTokens: 64000, // TODO
+  },
+  {
+    id: /^composer-1\.5$/,
+    reasoning: false,
+    input: ["text", "image"],
+    cost: { input: 3.5, output: 17.5, cacheRead: 0.35, cacheWrite: 4.375 },
     contextWindow: 200000,
     maxTokens: 64000, // TODO
   },
@@ -50,6 +58,14 @@ const overrides = [
     cost: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
     contextWindow: 128000,
     maxTokens: 16384,
+  },
+  {
+    id: /^gpt-5\.3-codex(-fast)?$/,
+    reasoning: true,
+    input: ["text", "image"],
+    cost: { input: 1.75, output: 14, cacheRead: 0.175, cacheWrite: 0 },
+    contextWindow: 400000,
+    maxTokens: 128000,
   },
   {
     id: /^gpt-5\.2$/,

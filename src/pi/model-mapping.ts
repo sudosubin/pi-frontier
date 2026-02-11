@@ -51,6 +51,20 @@ const MODEL_MAP: Record<string, Record<string, string>> = {
     high: "gpt-5.2-codex-high-fast",
     xhigh: "gpt-5.2-codex-xhigh-fast",
   },
+  "gpt-5.3-codex": {
+    default: "gpt-5.3-codex",
+    minimal: "gpt-5.3-codex-low",
+    low: "gpt-5.3-codex-low",
+    high: "gpt-5.3-codex-high",
+    xhigh: "gpt-5.3-codex-xhigh",
+  },
+  "gpt-5.3-codex-fast": {
+    default: "gpt-5.3-codex-fast",
+    minimal: "gpt-5.3-codex-low-fast",
+    low: "gpt-5.3-codex-low-fast",
+    high: "gpt-5.3-codex-high-fast",
+    xhigh: "gpt-5.3-codex-xhigh-fast",
+  },
 
   // GPT — limited levels
   "gpt-5.2": {
