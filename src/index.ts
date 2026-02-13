@@ -92,7 +92,7 @@ export default (pi: ExtensionAPI) => {
       streamCursorAgent(pi, getCtx, model, context, options),
     models: getCachedPiModels(),
     oauth: {
-      name: "Cursor Agent",
+      name: "Cursor",
       login,
       refreshToken,
       getApiKey: (cred) => cred.access,
