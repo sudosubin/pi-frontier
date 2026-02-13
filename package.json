@@ -9,22 +9,11 @@
     "type": "git",
     "url": "git+https://github.com/sudosubin/pi-cursor-agent.git"
   },
-  "keywords": [
-    "pi",
-    "cursor",
-    "cursor-agent",
-    "ai",
-    "llm"
-  ],
+  "keywords": ["pi", "cursor", "cursor-agent", "ai", "llm"],
   "pi": {
-    "extensions": [
-      "./src/index.ts"
-    ]
+    "extensions": ["./src/index.ts"]
   },
-  "files": [
-    "src/**/*.ts",
-    "README.md"
-  ],
+  "files": ["src/**/*.ts", "README.md"],
   "scripts": {
     "typecheck": "tsc",
     "typecheck:watch": "tsc --watch",
