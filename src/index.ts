@@ -10,27 +10,46 @@ import type {
 import AiService from "./api/ai-service";
 import Auth from "./api/auth";
 import AuthManager from "./lib/auth";
-import { restoreAgentStoreFromBranch } from "./pi/agent-store";
-import { streamCursorAgent } from "./stream";
 import {
   CURSOR_API_URL,
   CURSOR_CLIENT_VERSION,
   CURSOR_WEBSITE_URL,
 } from "./lib/env";
-import { getCachedPiModels, updateCachedPiModels } from "./pi/model";
+import { restoreAgentStoreFromBranch } from "./pi/agent-store";
+import { getCachedPiModels, updateCachedPiModelsIfStale } from "./pi/model";
+import { streamCursorAgent } from "./stream";
 
 const auth = new AuthManager(new Auth(CURSOR_API_URL), CURSOR_WEBSITE_URL);
+
+const createAiService = (accessToken: string) => {
+  return new AiService(CURSOR_API_URL, {
+    accessToken,
+    clientVersion: CURSOR_CLIENT_VERSION,
+    clientType: "cli",
+  });
+};
+
+const updateCachedModelsInBackground = (accessToken: string) => {
+  const ai = createAiService(accessToken);
+  void updateCachedPiModelsIfStale(ai).catch(() => {}); // ignore
+};
+
+const updateCachedModelsFromContextInBackground = (ctx: ExtensionContext) => {
+  void (async () => {
+    const accessToken = await ctx.modelRegistry.getApiKeyForProvider("cursor");
+    if (!accessToken) {
+      return;
+    }
+
+    await updateCachedPiModelsIfStale(createAiService(accessToken));
+  })().catch(() => {}); // ignore
+};
 
 const login = async (
   callbacks: OAuthLoginCallbacks,
 ): Promise<OAuthCredentials> => {
   const credentials = await auth.login(callbacks);
-  const ai = new AiService(CURSOR_API_URL, {
-    accessToken: credentials.access,
-    clientVersion: CURSOR_CLIENT_VERSION,
-    clientType: "cli",
-  });
-  await updateCachedPiModels(ai);
+  updateCachedModelsInBackground(credentials.access);
   return credentials;
 };
 
@@ -38,12 +57,7 @@ const refreshToken = async (
   credentials: OAuthCredentials,
 ): Promise<OAuthCredentials> => {
   const refreshed = await auth.refresh(credentials);
-  const ai = new AiService(CURSOR_API_URL, {
-    accessToken: credentials.access,
-    clientVersion: CURSOR_CLIENT_VERSION,
-    clientType: "cli",
-  });
-  await updateCachedPiModels(ai);
+  updateCachedModelsInBackground(refreshed.access);
   return refreshed;
 };
 
@@ -54,27 +68,12 @@ export default (pi: ExtensionAPI) => {
   const refreshBranchState = async (ctx: ExtensionContext) => {
     lastCtx = ctx;
     try {
-      const sessionId = ctx.sessionManager.getSessionId();
       await restoreAgentStoreFromBranch(
-        sessionId,
+        ctx.sessionManager.getSessionId(),
         ctx.sessionManager.getBranch(),
       );
-    } catch {
-      // ignore
-    }
+    } catch {} // ignore
   };
-
-  pi.on("session_start", async (_, ctx) => {
-    await refreshBranchState(ctx);
-  });
-
-  pi.on("session_switch", async (_, ctx) => {
-    await refreshBranchState(ctx);
-  });
-
-  pi.on("session_tree", async (_, ctx) => {
-    await refreshBranchState(ctx);
-  });
 
   pi.on("before_agent_start", async (_, ctx) => {
     lastCtx = ctx;
@@ -82,6 +81,27 @@ export default (pi: ExtensionAPI) => {
 
   pi.on("agent_start", async (_, ctx) => {
     lastCtx = ctx;
+  });
+
+  pi.on("model_select", async (event, ctx) => {
+    lastCtx = ctx;
+    if (event.model.provider === "cursor-agent") {
+      updateCachedModelsFromContextInBackground(ctx);
+    }
+  });
+
+  pi.on("session_start", async (_, ctx) => {
+    await refreshBranchState(ctx);
+    updateCachedModelsFromContextInBackground(ctx);
+  });
+
+  pi.on("session_switch", async (_, ctx) => {
+    await refreshBranchState(ctx);
+    updateCachedModelsFromContextInBackground(ctx);
+  });
+
+  pi.on("session_tree", async (_, ctx) => {
+    await refreshBranchState(ctx);
   });
 
   pi.registerProvider("cursor", {

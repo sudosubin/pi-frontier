@@ -9,3 +9,10 @@ export const PI_CURSOR_AGENT_CACHE_DIR = path.join(
   "cache",
   "pi-cursor-agent",
 );
+
+export const PI_CURSOR_AGENT_MODELS_CACHE_FILE = path.join(
+  PI_CURSOR_AGENT_CACHE_DIR,
+  "models.json",
+);
+
+export const PI_CURSOR_AGENT_MODELS_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
