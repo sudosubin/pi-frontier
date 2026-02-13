@@ -1,6 +1,6 @@
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import * as fs from "node:fs/promises";
+import fs from "node:fs/promises";
 import type { Executor } from "../../vendor/agent-exec";
 import { resolvePath } from "../../vendor/local-exec";
 import type {
@@ -28,7 +28,10 @@ function buildDeleteResultFromToolResult(
   const text = toolResultToText(result);
   if (result.isError) {
     return new DeleteResultClass({
-      result: { case: "error", value: new DeleteError({ path, error: text || "Delete failed" }) },
+      result: {
+        case: "error",
+        value: new DeleteError({ path, error: text || "Delete failed" }),
+      },
     });
   }
   return new DeleteResultClass({

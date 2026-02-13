@@ -1,8 +1,8 @@
 import { createWriteTool } from "@mariozechner/pi-coding-agent";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { Executor } from "../../vendor/agent-exec";
 import { resolvePath } from "../../vendor/local-exec";
 import type {
@@ -36,7 +36,13 @@ function buildWriteResultFromToolResult(
   const text = toolResultToText(result);
   if (result.isError) {
     return new WriteResultClass({
-      result: { case: "error", value: new WriteError({ path: args.path, error: text || "Write failed" }) },
+      result: {
+        case: "error",
+        value: new WriteError({
+          path: args.path,
+          error: text || "Write failed",
+        }),
+      },
     });
   }
   const fileText = args.fileText ?? "";

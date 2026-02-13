@@ -1,4 +1,4 @@
-import * as os from "node:os";
+import os from "node:os";
 import path from "node:path";
 
 const PI_CODING_AGENT_DIR =

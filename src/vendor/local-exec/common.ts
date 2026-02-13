@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import path from "node:path";
 
 function untildify(filePath: string): string {
   const home = process.env["HOME"] || "";
@@ -7,10 +7,7 @@ function untildify(filePath: string): string {
   return filePath;
 }
 
-export function resolvePath(
-  filePath: string,
-  basePath?: string,
-): string {
+export function resolvePath(filePath: string, basePath?: string): string {
   const untildified = untildify(filePath);
   if (basePath && !path.isAbsolute(untildified)) {
     return path.resolve(basePath, untildified);

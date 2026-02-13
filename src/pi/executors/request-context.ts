@@ -1,4 +1,4 @@
-import * as os from "node:os";
+import os from "node:os";
 import type { Executor } from "../../vendor/agent-exec";
 import {
   LocalGitExecutor,
@@ -18,9 +18,10 @@ import {
   RequestContextSuccess,
 } from "../../__generated__/agent/v1/request_context_exec_pb";
 
-export class LocalRequestContextExecutor
-  implements Executor<RequestContextArgs, RequestContextResult>
-{
+export class LocalRequestContextExecutor implements Executor<
+  RequestContextArgs,
+  RequestContextResult
+> {
   private readonly tools: McpToolDefinition[];
   private readonly workspacePaths: string[];
   private readonly gitExecutor: LocalGitExecutor;
