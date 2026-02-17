@@ -31,6 +31,7 @@ export default {
         scopeOnly: true,
         bumpStrict: true,
       },
+      tagOpts: { prefix: `${scope}@` },
       context: { linkCompare: false },
       infile: "CHANGELOG.md",
     },
