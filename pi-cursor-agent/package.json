@@ -1,6 +1,6 @@
 {
   "name": "pi-cursor-agent",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Cursor Agent provider extension for pi",
   "type": "module",
   "license": "MIT",
