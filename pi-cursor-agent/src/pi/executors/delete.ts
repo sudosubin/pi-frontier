@@ -77,7 +77,7 @@ export class LocalDeleteExecutor implements Executor<DeleteArgs, DeleteResult> {
     const extCtx = this.ctx.getCtx();
     if (extCtx?.hasUI) {
       extCtx.ui.setWorkingMessage("Cursor: delete");
-      extCtx.ui.setStatus("cursor", `delete: ${pathArg}`);
+      extCtx.ui.setStatus("cursor-agent", `delete: ${pathArg}`);
     }
     this.ctx.onToolExec?.({
       type: "start",
@@ -124,7 +124,7 @@ export class LocalDeleteExecutor implements Executor<DeleteArgs, DeleteResult> {
 
     if (extCtx?.hasUI) {
       extCtx.ui.setWorkingMessage();
-      extCtx.ui.setStatus("cursor", undefined);
+      extCtx.ui.setStatus("cursor-agent", undefined);
     }
 
     return toolResult;

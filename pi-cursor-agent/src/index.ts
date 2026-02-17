@@ -36,7 +36,8 @@ const updateCachedModelsInBackground = (accessToken: string) => {
 
 const updateCachedModelsFromContextInBackground = (ctx: ExtensionContext) => {
   void (async () => {
-    const accessToken = await ctx.modelRegistry.getApiKeyForProvider("cursor");
+    const accessToken =
+      await ctx.modelRegistry.getApiKeyForProvider("cursor-agent");
     if (!accessToken) {
       return;
     }
@@ -104,7 +105,7 @@ export default (pi: ExtensionAPI) => {
     await refreshBranchState(ctx);
   });
 
-  pi.registerProvider("cursor", {
+  pi.registerProvider("cursor-agent", {
     baseUrl: CURSOR_API_URL,
     apiKey: "CURSOR_ACCESS_TOKEN",
     api: "cursor-agent" as unknown as Api,

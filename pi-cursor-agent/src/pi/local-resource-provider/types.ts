@@ -70,7 +70,7 @@ export async function executePiTool(
   if (extCtx?.hasUI) {
     extCtx.ui.setWorkingMessage(`Cursor: ${toolName}`);
     extCtx.ui.setStatus(
-      "cursor",
+      "cursor-agent",
       `${toolName}: ${JSON.stringify(args).slice(0, 200)}`,
     );
   }
@@ -103,7 +103,7 @@ export async function executePiTool(
 
   if (extCtx?.hasUI) {
     extCtx.ui.setWorkingMessage();
-    extCtx.ui.setStatus("cursor", undefined);
+    extCtx.ui.setStatus("cursor-agent", undefined);
   }
 
   return toolResult;

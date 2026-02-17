@@ -139,7 +139,7 @@ export class LocalWriteExecutor implements Executor<WriteArgs, WriteResult> {
     const extCtx = this.ctx.getCtx();
     if (extCtx?.hasUI) {
       extCtx.ui.setWorkingMessage("Cursor: write (binary)");
-      extCtx.ui.setStatus("cursor", `write: ${writeArgs.path}`);
+      extCtx.ui.setStatus("cursor-agent", `write: ${writeArgs.path}`);
     }
     this.ctx.onToolExec?.({
       type: "start",
@@ -187,7 +187,7 @@ export class LocalWriteExecutor implements Executor<WriteArgs, WriteResult> {
 
     if (extCtx?.hasUI) {
       extCtx.ui.setWorkingMessage();
-      extCtx.ui.setStatus("cursor", undefined);
+      extCtx.ui.setStatus("cursor-agent", undefined);
     }
 
     return toolResult;

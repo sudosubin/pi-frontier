@@ -13,6 +13,7 @@
     "pi",
     "cursor",
     "cursor-agent",
+    "cursor-cli",
     "ai",
     "llm"
   ],
