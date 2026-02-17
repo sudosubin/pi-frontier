@@ -51,6 +51,9 @@ jobs:
       - name: release
         if: steps.prepare.outputs.packages != '[]'
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           while IFS= read -r dir; do
             echo "[INFO] Prepare $dir"
 
