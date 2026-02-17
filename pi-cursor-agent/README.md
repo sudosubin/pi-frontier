@@ -1,7 +1,7 @@
 # pi-cursor-agent
 
 [![npm](https://badgen.net/npm/v/pi-cursor-agent)](https://www.npmjs.com/package/pi-cursor-agent)
-[![cursor-agent](https://badgen.net/static/cursor-cli/2026.01.17-d239e66/gray)](https://cursor.com/cli)
+[![cursor-cli](https://badgen.net/static/cursor-cli/2026.01.17-d239e66/gray)](https://cursor.com/cli)
 
 ![terminal](./assets/terminal.avif)
 
