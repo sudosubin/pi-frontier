@@ -7,7 +7,8 @@
   "author": "sudosubin",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/sudosubin/pi-frontier.git"
+    "url": "git+https://github.com/sudosubin/pi-frontier.git",
+    "directory": "pi-cursor-agent"
   },
   "keywords": [
     "pi",
