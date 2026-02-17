@@ -38,7 +38,7 @@ jobs:
         run: |
           if [[ -n "${{ inputs.package }}" ]]; then
             package="${{ inputs.package }}"
-            [[ -z "$package" || -d "$package" ]] || { echo "[ERROR] Invalid package input: $package" >&2; exit 1; }
+            [[ -d "$package" ]] || { echo "[ERROR] Invalid package input: $package" >&2; exit 1; }
             echo "packages=$(jq -nc --arg p "$package" '[ $p ]')" >> "$GITHUB_OUTPUT"
           else
             echo "packages=$(find . -mindepth 1 -maxdepth 1 -type d -name 'pi-*' -printf '%f\n' | sort | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
@@ -68,6 +68,6 @@ jobs:
             fi
 
             popd > /dev/null
-          done < <(jq -r '.[]' <<< "${{ steps.prepare.outputs.packages }}")
+          done < <(jq -r '.[]' <<< '${{ steps.prepare.outputs.packages }}')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
