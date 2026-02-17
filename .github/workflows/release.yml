@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Run release in dry-run mode
+        required: true
+        type: boolean
+        default: true
+      package:
+        description: Package directory to release
+        required: false
+        type: string
+        default: ""
+
+concurrency: ${{ github.workflow }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+
+      - name: prepare packages
+        id: prepare
+        run: |
+          if [[ -n "${{ inputs.package }}" ]]; then
+            package="${{ inputs.package }}"
+            [[ -z "$package" || -d "$package" ]] || { echo "[ERROR] Invalid package input: $package" >&2; exit 1; }
+            echo "packages=$(jq -nc --arg p "$package" '[ $p ]')" >> "$GITHUB_OUTPUT"
+          else
+            echo "packages=$(find . -mindepth 1 -maxdepth 1 -type d -name 'pi-*' -printf '%f\n' | sort | jq -Rnc '[inputs]')" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: install dependencies
+        if: steps.prepare.outputs.packages != '[]'
+        run: npm install -g release-it@19.2.4 @release-it/conventional-changelog@10.0.5
+
+      - name: release
+        if: steps.prepare.outputs.packages != '[]'
+        run: |
+          while IFS= read -r dir; do
+            echo "[INFO] Prepare $dir"
+
+            pushd "$dir" > /dev/null
+            npm ci
+            npm run typecheck --if-present
+
+            if [[ "${{ inputs.dry-run }}" == "true" ]]; then
+              echo "[INFO] Release $dir (dry-run)"
+              release-it --ci --config ../.release-it.ts --dry-run --no-github.release --npm.publish=false --git.requireCleanWorkingDir=false
+              git checkout -- package.json package-lock.json CHANGELOG.md 2> /dev/null || true
+            else
+              echo "[INFO] Release $dir"
+              release-it --ci --config ../.release-it.ts
+            fi
+
+            popd > /dev/null
+          done < <(jq -r '.[]' <<< "${{ steps.prepare.outputs.packages }}")
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
