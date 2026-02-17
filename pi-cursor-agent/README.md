@@ -34,10 +34,6 @@ The following models are available through the Cursor Agent provider. Canonical 
 ## Installation
 
 ```sh
-# using git
-pi install git:github.com/sudosubin/pi-cursor-agent
-
-# using npm
 pi install npm:pi-cursor-agent
 ```
 
