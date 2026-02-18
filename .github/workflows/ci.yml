@@ -34,5 +34,7 @@ jobs:
           cache-dependency-path: ${{ matrix.path }}/package-lock.json
       - run: npm ci
         working-directory: ${{ matrix.path }}
-      - run: npm run typecheck
+      - run: npm run lint --if-present
+        working-directory: ${{ matrix.path }}
+      - run: npm run typecheck --if-present
         working-directory: ${{ matrix.path }}
