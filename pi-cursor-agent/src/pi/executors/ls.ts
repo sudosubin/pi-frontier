@@ -1,6 +1,5 @@
-import { createLsTool } from "@mariozechner/pi-coding-agent";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import type { Executor } from "../../vendor/agent-exec";
+import { createLsTool } from "@mariozechner/pi-coding-agent";
 import type { LsArgs, LsResult } from "../../__generated__/agent/v1/ls_exec_pb";
 import {
   LsError,
@@ -12,8 +11,13 @@ import {
   LsDirectoryTreeNode,
   LsDirectoryTreeNode_File,
 } from "../../__generated__/agent/v1/selected_context_pb";
+import type { Executor } from "../../vendor/agent-exec";
+import {
+  decodeToolCallId,
+  executePiTool,
+  type PiToolContext,
+} from "../local-resource-provider/types";
 import { toolResultToText } from "../utils/tool-result";
-import { type PiToolContext, decodeToolCallId, executePiTool } from "../local-resource-provider/types";
 
 function buildLsResultFromToolResult(
   path: string,
@@ -22,7 +26,10 @@ function buildLsResultFromToolResult(
   const text = toolResultToText(result);
   if (result.isError) {
     return new LsResultClass({
-      result: { case: "error", value: new LsError({ path, error: text || "Ls failed" }) },
+      result: {
+        case: "error",
+        value: new LsError({ path, error: text || "Ls failed" }),
+      },
     });
   }
 

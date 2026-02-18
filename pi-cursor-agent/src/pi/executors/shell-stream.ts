@@ -1,24 +1,27 @@
 import type { TextContent } from "@mariozechner/pi-ai";
-import type { StreamExecutor } from "../../vendor/agent-exec";
 import type {
   ShellArgs,
   ShellStream,
 } from "../../__generated__/agent/v1/shell_exec_pb";
 import {
-  ShellStream as ShellStreamClass,
   ShellRejected,
+  ShellStream as ShellStreamClass,
   ShellStreamExit,
   ShellStreamStart,
   ShellStreamStderr,
   ShellStreamStdout,
 } from "../../__generated__/agent/v1/shell_exec_pb";
-import { type PiToolContext, decodeToolCallId, executePiTool } from "../local-resource-provider/types";
-import { type LocalShellExecutor, confirmIfDangerous } from "./shell";
+import type { StreamExecutor } from "../../vendor/agent-exec";
+import {
+  decodeToolCallId,
+  executePiTool,
+  type PiToolContext,
+} from "../local-resource-provider/types";
+import { confirmIfDangerous, type LocalShellExecutor } from "./shell";
 
-export class LocalShellStreamExecutor implements StreamExecutor<
-  ShellArgs,
-  ShellStream
-> {
+export class LocalShellStreamExecutor
+  implements StreamExecutor<ShellArgs, ShellStream>
+{
   private readonly ctx: PiToolContext;
   private readonly shellExecutor: LocalShellExecutor;
 
@@ -93,7 +96,10 @@ export class LocalShellStreamExecutor implements StreamExecutor<
       bashTool,
       "bash",
       toolCallId,
-      { command: args.command, timeout: timeoutSeconds },
+      {
+        command: args.command,
+        ...(timeoutSeconds != null ? { timeout: timeoutSeconds } : {}),
+      },
     );
 
     const text = toolResult.content

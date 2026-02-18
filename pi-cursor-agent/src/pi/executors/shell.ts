@@ -1,9 +1,6 @@
-import { createBashTool } from "@mariozechner/pi-coding-agent";
-import type { AgentTool } from "@mariozechner/pi-agent-core";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import type { Executor } from "../../vendor/agent-exec";
-import { resolvePath } from "../../vendor/local-exec";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import { createBashTool } from "@mariozechner/pi-coding-agent";
 import type {
   ShellArgs,
   ShellResult,
@@ -14,8 +11,14 @@ import {
   ShellResult as ShellResultClass,
   ShellSuccess,
 } from "../../__generated__/agent/v1/shell_exec_pb";
+import type { Executor } from "../../vendor/agent-exec";
+import { resolvePath } from "../../vendor/local-exec";
+import {
+  decodeToolCallId,
+  executePiTool,
+  type PiToolContext,
+} from "../local-resource-provider/types";
 import { toolResultToText } from "../utils/tool-result";
-import { type PiToolContext, decodeToolCallId, executePiTool } from "../local-resource-provider/types";
 
 function buildShellResultFromToolResult(
   args: { command: string; workingDirectory: string },
@@ -95,14 +98,17 @@ export async function confirmIfDangerous(
 
 export class LocalShellExecutor implements Executor<ShellArgs, ShellResult> {
   private readonly ctx: PiToolContext;
-  private readonly bashByCwd = new Map<string, AgentTool<any>>();
+  private readonly bashByCwd = new Map<
+    string,
+    ReturnType<typeof createBashTool>
+  >();
 
   constructor(ctx: PiToolContext) {
     this.ctx = ctx;
     this.bashByCwd.set(ctx.cwd, createBashTool(ctx.cwd));
   }
 
-  getBashTool(workingDirectory?: string): AgentTool<any> {
+  getBashTool(workingDirectory?: string): ReturnType<typeof createBashTool> {
     const resolved = resolvePath(
       workingDirectory || this.ctx.cwd,
       this.ctx.cwd,
@@ -143,7 +149,10 @@ export class LocalShellExecutor implements Executor<ShellArgs, ShellResult> {
       bashTool,
       "bash",
       toolCallId,
-      { command: args.command, timeout: timeoutSeconds },
+      {
+        command: args.command,
+        ...(timeoutSeconds != null ? { timeout: timeoutSeconds } : {}),
+      },
     );
 
     return buildShellResultFromToolResult(

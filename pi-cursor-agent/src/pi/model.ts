@@ -1,7 +1,7 @@
 import fs from "node:fs";
-import { Api, Model } from "@mariozechner/pi-ai";
-import { ModelDetails } from "../__generated__/agent/v1/agent_pb";
-import AiService from "../api/ai-service";
+import type { Api, Model } from "@mariozechner/pi-ai";
+import type { ModelDetails } from "../__generated__/agent/v1/agent_pb";
+import type AiService from "../api/ai-service";
 import { CURSOR_API_URL } from "../lib/env";
 import {
   PI_CURSOR_AGENT_CACHE_DIR,
@@ -9,7 +9,7 @@ import {
   PI_CURSOR_AGENT_MODELS_CACHE_TTL_MS,
 } from "./env";
 import { toCanonicalId } from "./model-mapping";
-import { findPiModelOverride, PiModelOverride } from "./model-override";
+import { findPiModelOverride, type PiModelOverride } from "./model-override";
 
 interface CachedModelsFile {
   models: ModelDetails[];

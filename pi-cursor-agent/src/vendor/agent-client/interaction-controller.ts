@@ -4,12 +4,12 @@ import type {
   InteractionUpdate,
 } from "../../__generated__/agent/v1/agent_pb";
 import {
-  convertProtoToInteractionUpdate,
-  convertProtoToInteractionQuery,
-  convertInteractionResponseToProto,
-  type CoreInteractionUpdate,
   type CoreInteractionQuery,
   type CoreInteractionResponse,
+  type CoreInteractionUpdate,
+  convertInteractionResponseToProto,
+  convertProtoToInteractionQuery,
+  convertProtoToInteractionUpdate,
 } from "../agent-core/interaction-conversion";
 import type { InteractionMessage } from "./split-stream";
 

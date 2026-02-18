@@ -1,9 +1,9 @@
 export {
-  thinkingStyleToProto,
-  convertProtoToInteractionUpdate,
-  convertProtoToInteractionQuery,
-  convertInteractionResponseToProto,
-  type CoreInteractionUpdate,
   type CoreInteractionQuery,
   type CoreInteractionResponse,
+  type CoreInteractionUpdate,
+  convertInteractionResponseToProto,
+  convertProtoToInteractionQuery,
+  convertProtoToInteractionUpdate,
+  thinkingStyleToProto,
 } from "./interaction-conversion";

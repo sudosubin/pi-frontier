@@ -1,9 +1,9 @@
-import { ConnectError, Code } from "@connectrpc/connect";
+import { Code, ConnectError } from "@connectrpc/connect";
 import {
+  type ExecClientControlMessage,
+  type ExecClientMessage,
   ExecServerControlMessage,
   type ExecServerMessage,
-  type ExecClientMessage,
-  type ExecClientControlMessage,
 } from "../../__generated__/agent/v1/exec_pb";
 import { WriteIterableClosedError } from "../utils";
 
@@ -75,11 +75,11 @@ export class ClientExecController {
         throw new LostConnection(error.message);
       } else if (error instanceof ConnectError && error.code === Code.Aborted) {
         const cause = error.cause;
+        const causeWithCode = cause as { code?: unknown };
         if (
           cause instanceof Error &&
-          "code" in cause &&
-          typeof (cause as any).code === "string" &&
-          ((cause as any).code as string).includes("ERR_STREAM_WRITE_AFTER_END")
+          typeof causeWithCode.code === "string" &&
+          causeWithCode.code.includes("ERR_STREAM_WRITE_AFTER_END")
         ) {
           throw new LostConnection(error.message);
         }

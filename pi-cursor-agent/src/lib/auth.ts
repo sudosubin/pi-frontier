@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
-import { OAuthLoginCallbacks } from "@mariozechner/pi-ai";
-import Auth from "../api/auth";
+import type { OAuthLoginCallbacks } from "@mariozechner/pi-ai";
+import type Auth from "../api/auth";
 import { backoff } from "./backoff";
 
 type OnAuth = (info: { url: string; instructions: string }) => void;
@@ -126,7 +126,10 @@ const decodeJwt = (token: string): JwtPayload | null => {
 const getTokenExpiry = (token: string): number => {
   try {
     const decoded = decodeJwt(token);
-    return decoded!.exp * 1000 - 5 * 60 * 1000;
+    if (!decoded || typeof decoded.exp !== "number") {
+      return Date.now() + 3600 * 1000;
+    }
+    return decoded.exp * 1000 - 5 * 60 * 1000;
   } catch {
     return Date.now() + 3600 * 1000;
   }

@@ -28,6 +28,8 @@
     "README.md"
   ],
   "scripts": {
+    "lint": "biome check",
+    "format": "biome check --write",
     "typecheck": "tsc",
     "typecheck:watch": "tsc --watch",
     "proto:generate": "buf generate"
@@ -38,6 +40,7 @@
     "@connectrpc/connect-node": "^1.7.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.4.2",
     "@bufbuild/buf": "^1.65.0",
     "@bufbuild/protoc-gen-es": "1.10.0",
     "@connectrpc/protoc-gen-connect-es": "^1.7.0",

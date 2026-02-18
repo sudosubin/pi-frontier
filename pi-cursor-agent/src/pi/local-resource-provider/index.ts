@@ -1,5 +1,5 @@
 export { LocalResourceProvider } from "./provider";
-export {
-  type ToolExecEvent,
-  type PiToolContext,
+export type {
+  PiToolContext,
+  ToolExecEvent,
 } from "./types";

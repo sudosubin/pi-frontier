@@ -37,24 +37,24 @@ function getMessageTypeLabelForStallDetector(
   const parts: (string | undefined)[] = [];
   parts.push(message.message.case);
 
-  const msg = message.message as { case?: string; value?: any };
+  const msg = message.message;
   switch (msg.case) {
     case "interactionUpdate":
-      parts.push(msg.value?.message?.case);
+      parts.push(msg.value.message.case);
       break;
     case "interactionQuery":
-      parts.push(msg.value?.query?.case);
+      parts.push(msg.value.query.case);
       break;
     case "execServerMessage":
-      parts.push(msg.value?.message?.case);
+      parts.push(msg.value.message.case);
       break;
     case "execServerControlMessage":
-      parts.push(msg.value?.message?.case);
+      parts.push(msg.value.message.case);
       break;
     case "conversationCheckpointUpdate":
       break;
     case "kvServerMessage":
-      parts.push(msg.value?.message?.case);
+      parts.push(msg.value.message.case);
       break;
   }
 

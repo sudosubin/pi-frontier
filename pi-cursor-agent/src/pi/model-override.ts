@@ -1,4 +1,4 @@
-import { Api, Model } from "@mariozechner/pi-ai";
+import type { Api, Model } from "@mariozechner/pi-ai";
 
 export type PiModelOverride = Pick<
   Model<Api>,
@@ -6,7 +6,12 @@ export type PiModelOverride = Pick<
 >;
 
 export const findPiModelOverride = (id: string): PiModelOverride => {
-  const { id: _, ...override } = overrides.find((m) => m.id.test(id))!;
+  const matched = overrides.find((m) => m.id.test(id));
+  if (!matched) {
+    throw new Error(`No model override found for id: ${id}`);
+  }
+
+  const { id: _, ...override } = matched;
   return override;
 };
 

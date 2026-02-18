@@ -1,11 +1,16 @@
 import {
-  InteractionResponse,
   type InteractionQuery,
+  InteractionResponse,
   type InteractionUpdate,
 } from "../../__generated__/agent/v1/agent_pb";
-import { ThinkingStyle } from "../../__generated__/agent/v1/utils_pb";
-import { AskQuestionInteractionResponse } from "../../__generated__/agent/v1/ask_question_tool_pb";
-import { CreatePlanRequestResponse } from "../../__generated__/agent/v1/create_plan_tool_pb";
+import {
+  AskQuestionInteractionResponse,
+  type AskQuestionResult,
+} from "../../__generated__/agent/v1/ask_question_tool_pb";
+import {
+  CreatePlanRequestResponse,
+  type CreatePlanResult,
+} from "../../__generated__/agent/v1/create_plan_tool_pb";
 import {
   ExaFetchRequestResponse,
   ExaFetchRequestResponse_Approved,
@@ -24,6 +29,7 @@ import {
   SwitchModeRequestResponse,
   SwitchModeRequestResponse_Rejected,
 } from "../../__generated__/agent/v1/switch_mode_tool_pb";
+import { ThinkingStyle } from "../../__generated__/agent/v1/utils_pb";
 import {
   WebFetchRequestResponse,
   WebFetchRequestResponse_Approved,
@@ -365,20 +371,17 @@ export function convertInteractionResponseToProto(
       const webSearchResponse = response as
         | { approved: true }
         | { approved: false; reason?: string };
-      let resultValue;
-      if (webSearchResponse.approved) {
-        resultValue = {
-          case: "approved" as const,
-          value: new WebSearchRequestResponse_Approved(),
-        };
-      } else {
-        resultValue = {
-          case: "rejected" as const,
-          value: new WebSearchRequestResponse_Rejected({
-            reason: webSearchResponse.reason ?? "",
-          }),
-        };
-      }
+      const resultValue = webSearchResponse.approved
+        ? {
+            case: "approved" as const,
+            value: new WebSearchRequestResponse_Approved(),
+          }
+        : {
+            case: "rejected" as const,
+            value: new WebSearchRequestResponse_Rejected({
+              reason: webSearchResponse.reason ?? "",
+            }),
+          };
       return new InteractionResponse({
         id,
         result: {
@@ -393,20 +396,17 @@ export function convertInteractionResponseToProto(
       const webFetchResponse = response as
         | { approved: true }
         | { approved: false; reason?: string };
-      let resultValue;
-      if (webFetchResponse.approved) {
-        resultValue = {
-          case: "approved" as const,
-          value: new WebFetchRequestResponse_Approved(),
-        };
-      } else {
-        resultValue = {
-          case: "rejected" as const,
-          value: new WebFetchRequestResponse_Rejected({
-            reason: webFetchResponse.reason ?? "",
-          }),
-        };
-      }
+      const resultValue = webFetchResponse.approved
+        ? {
+            case: "approved" as const,
+            value: new WebFetchRequestResponse_Approved(),
+          }
+        : {
+            case: "rejected" as const,
+            value: new WebFetchRequestResponse_Rejected({
+              reason: webFetchResponse.reason ?? "",
+            }),
+          };
       return new InteractionResponse({
         id,
         result: {
@@ -424,7 +424,7 @@ export function convertInteractionResponseToProto(
         result: {
           case: "askQuestionInteractionResponse",
           value: new AskQuestionInteractionResponse({
-            result: askQuestionResponse.result as any,
+            result: askQuestionResponse.result as AskQuestionResult,
           }),
         },
       });
@@ -470,20 +470,17 @@ export function convertInteractionResponseToProto(
       const exaSearchResponse = response as
         | { approved: true }
         | { approved: false; reason?: string };
-      let resultValue;
-      if (exaSearchResponse.approved) {
-        resultValue = {
-          case: "approved" as const,
-          value: new ExaSearchRequestResponse_Approved(),
-        };
-      } else {
-        resultValue = {
-          case: "rejected" as const,
-          value: new ExaSearchRequestResponse_Rejected({
-            reason: exaSearchResponse.reason ?? "",
-          }),
-        };
-      }
+      const resultValue = exaSearchResponse.approved
+        ? {
+            case: "approved" as const,
+            value: new ExaSearchRequestResponse_Approved(),
+          }
+        : {
+            case: "rejected" as const,
+            value: new ExaSearchRequestResponse_Rejected({
+              reason: exaSearchResponse.reason ?? "",
+            }),
+          };
       return new InteractionResponse({
         id,
         result: {
@@ -498,20 +495,17 @@ export function convertInteractionResponseToProto(
       const exaFetchResponse = response as
         | { approved: true }
         | { approved: false; reason?: string };
-      let resultValue;
-      if (exaFetchResponse.approved) {
-        resultValue = {
-          case: "approved" as const,
-          value: new ExaFetchRequestResponse_Approved(),
-        };
-      } else {
-        resultValue = {
-          case: "rejected" as const,
-          value: new ExaFetchRequestResponse_Rejected({
-            reason: exaFetchResponse.reason ?? "",
-          }),
-        };
-      }
+      const resultValue = exaFetchResponse.approved
+        ? {
+            case: "approved" as const,
+            value: new ExaFetchRequestResponse_Approved(),
+          }
+        : {
+            case: "rejected" as const,
+            value: new ExaFetchRequestResponse_Rejected({
+              reason: exaFetchResponse.reason ?? "",
+            }),
+          };
       return new InteractionResponse({
         id,
         result: {
@@ -529,7 +523,7 @@ export function convertInteractionResponseToProto(
         result: {
           case: "createPlanRequestResponse",
           value: new CreatePlanRequestResponse({
-            result: createPlanResponse.result as any,
+            result: createPlanResponse.result as CreatePlanResult,
           }),
         },
       });

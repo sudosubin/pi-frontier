@@ -1,6 +1,5 @@
-import { createReadTool } from "@mariozechner/pi-coding-agent";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import type { Executor } from "../../vendor/agent-exec";
+import { createReadTool } from "@mariozechner/pi-coding-agent";
 import type {
   ReadArgs,
   ReadResult,
@@ -11,8 +10,13 @@ import {
   ReadResult as ReadResultClass,
   ReadSuccess,
 } from "../../__generated__/agent/v1/read_exec_pb";
+import type { Executor } from "../../vendor/agent-exec";
+import {
+  decodeToolCallId,
+  executePiTool,
+  type PiToolContext,
+} from "../local-resource-provider/types";
 import { toolResultToText, toolResultWasTruncated } from "../utils/tool-result";
-import { type PiToolContext, decodeToolCallId, executePiTool } from "../local-resource-provider/types";
 
 function buildReadResultFromToolResult(
   path: string,
@@ -21,7 +25,10 @@ function buildReadResultFromToolResult(
   const text = toolResultToText(result);
   if (result.isError) {
     return new ReadResultClass({
-      result: { case: "error", value: new ReadError({ path, error: text || "Read failed" }) },
+      result: {
+        case: "error",
+        value: new ReadError({ path, error: text || "Read failed" }),
+      },
     });
   }
   const totalLines = text ? text.split("\n").length : 0;

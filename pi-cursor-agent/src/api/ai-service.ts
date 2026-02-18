@@ -1,6 +1,6 @@
 import {
-  createClient,
   type Client,
+  createClient,
   type Interceptor,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";

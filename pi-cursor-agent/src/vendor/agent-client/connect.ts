@@ -10,33 +10,30 @@ import {
   type ModelDetails,
   ResumeAction,
 } from "../../__generated__/agent/v1/agent_pb";
-import type { McpTools } from "../../__generated__/agent/v1/mcp_pb";
 import {
   ExecClientControlMessage,
   ExecClientMessage,
 } from "../../__generated__/agent/v1/exec_pb";
 import type { KvClientMessage } from "../../__generated__/agent/v1/kv_pb";
-import { SimpleControlledExecManager } from "../agent-exec/simple-controlled-exec-manager";
+import type { McpTools } from "../../__generated__/agent/v1/mcp_pb";
 import type { ResourceAccessor } from "../agent-exec/registry-resource-accessor";
+import { SimpleControlledExecManager } from "../agent-exec/simple-controlled-exec-manager";
+import { type BlobStore, ControlledKvManager } from "../agent-kv";
 import { MapWritable } from "../utils";
-import { ControlledKvManager, type BlobStore } from "../agent-kv";
 import {
-  splitStream,
-  type StallDetector,
-  type SplitChannels,
-} from "./split-stream";
-import {
-  ClientExecController,
-  LostConnection,
-} from "./exec-controller";
+  CheckpointController,
+  type CheckpointHandler,
+} from "./checkpoint-controller";
+import { ClientExecController, LostConnection } from "./exec-controller";
 import {
   ClientInteractionController,
   type InteractionListener,
 } from "./interaction-controller";
 import {
-  CheckpointController,
-  type CheckpointHandler,
-} from "./checkpoint-controller";
+  type SplitChannels,
+  type StallDetector,
+  splitStream,
+} from "./split-stream";
 
 export interface AgentRpcClient {
   run(
@@ -52,7 +49,9 @@ export interface AgentConnectRunOptions {
   checkpointHandler: CheckpointHandler;
   signal?: AbortSignal;
   headers?: Record<string, string>;
-  onConnectionStateChange?: (state: { state: "reconnecting" | "connected" }) => void;
+  onConnectionStateChange?: (state: {
+    state: "reconnecting" | "connected";
+  }) => void;
 }
 
 const HEARTBEAT_INTERVAL_MS = 5_000;
@@ -76,10 +75,14 @@ async function backoff(attempt: number, signal?: AbortSignal): Promise<void> {
   const delay = Math.min(1_000 * 2 ** attempt, 30_000);
   return new Promise<void>((resolve) => {
     const timer = setTimeout(resolve, delay);
-    signal?.addEventListener("abort", () => {
-      clearTimeout(timer);
-      resolve();
-    }, { once: true });
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
   });
 }
 
@@ -110,7 +113,10 @@ export class AgentConnectClient {
 
     // Retry state
     let currentState = runRequest.conversationState;
-    let currentAction = runRequest.action!;
+    let currentAction = runRequest.action;
+    if (!currentAction) {
+      throw new Error("runRequest.action is required");
+    }
     const modelDetails = runRequest.modelDetails;
     const mcpTools = runRequest.mcpTools;
     const conversationId = runRequest.conversationId;
@@ -218,16 +224,17 @@ export class AgentConnectClient {
 
     void baseRequestStream.write(initialRequest);
 
-    const runOptions: { signal?: AbortSignal; headers?: Record<string, string> } = {};
+    const runOptions: {
+      signal?: AbortSignal;
+      headers?: Record<string, string>;
+    } = {};
     if (options.signal) runOptions.signal = options.signal;
     if (options.headers) runOptions.headers = options.headers;
 
     const response = this.client.run(baseRequestStream, runOptions);
 
-    const channels: SplitChannels = splitStream(
-      response,
-      stallDetector,
-      () => options.onConnectionStateChange?.({ state: "connected" }),
+    const channels: SplitChannels = splitStream(response, stallDetector, () =>
+      options.onConnectionStateChange?.({ state: "connected" }),
     );
 
     // Heartbeat sender using setTimeout (not setInterval)

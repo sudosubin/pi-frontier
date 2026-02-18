@@ -1,8 +1,8 @@
 import {
-  toHex,
   type AgentMetadata,
   type BlobStore,
   type MetadataStore,
+  toHex,
 } from "../../vendor/agent-kv";
 
 export class JsonBlobStoreWithMetadata implements BlobStore, MetadataStore {

@@ -1,12 +1,12 @@
 import {
-  createClient,
   type Client,
+  createClient,
   type Interceptor,
 } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-node";
-import {
+import type {
   AgentClientMessage,
-  type AgentServerMessage,
+  AgentServerMessage,
 } from "../__generated__/agent/v1/agent_pb";
 import { AgentService as AgentServiceDef } from "../__generated__/agent/v1/agent_service_connect";
 import type { AgentRpcClient } from "../vendor/agent-client";

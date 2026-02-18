@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { toHex, fromHex, type AgentMetadata } from "../../vendor/agent-kv";
+import { type AgentMetadata, fromHex, toHex } from "../../vendor/agent-kv";
 
 interface BlobEntry {
   id: string;

@@ -1,8 +1,8 @@
 import {
   GetBlobResult,
   KvClientMessage,
-  SetBlobResult,
   type KvServerMessage,
+  SetBlobResult,
 } from "../../__generated__/agent/v1/kv_pb";
 
 export interface Writable<T> {

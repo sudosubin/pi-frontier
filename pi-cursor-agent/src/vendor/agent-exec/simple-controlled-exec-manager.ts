@@ -1,6 +1,4 @@
 import { createWritableIterable } from "@connectrpc/connect/protocol";
-import type { ControlledExecManager } from "../agent-client/exec-controller";
-import { WriteIterableClosedError } from "../utils";
 import {
   ExecClientControlMessage,
   ExecClientHeartbeat,
@@ -10,6 +8,9 @@ import {
   type ExecServerControlMessage,
   type ExecServerMessage,
 } from "../../__generated__/agent/v1/exec_pb";
+import type { ControlledExecManager } from "../agent-client/exec-controller";
+import { WriteIterableClosedError } from "../utils";
+import type { ResourceAccessor } from "./registry-resource-accessor";
 
 const EXEC_HEARTBEAT_INTERVAL_MS = 3_000;
 
@@ -19,8 +20,6 @@ export interface SimpleExecHandler {
     serverMessage: ExecServerMessage,
   ): AsyncIterable<ExecClientMessage> | undefined;
 }
-
-import type { ResourceAccessor } from "./registry-resource-accessor";
 
 export class SimpleControlledExecManager implements ControlledExecManager {
   private readonly handlers: SimpleExecHandler[] = [];

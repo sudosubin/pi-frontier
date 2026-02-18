@@ -1,12 +1,12 @@
 import type {
-  ExtensionAPI,
-  ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
-import type {
   Api,
   OAuthCredentials,
   OAuthLoginCallbacks,
 } from "@mariozechner/pi-ai";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@mariozechner/pi-coding-agent";
 import AiService from "./api/ai-service";
 import Auth from "./api/auth";
 import AuthManager from "./lib/auth";

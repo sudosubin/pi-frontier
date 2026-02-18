@@ -1,8 +1,6 @@
+import fs from "node:fs/promises";
 import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import fs from "node:fs/promises";
-import type { Executor } from "../../vendor/agent-exec";
-import { resolvePath } from "../../vendor/local-exec";
 import type {
   DeleteArgs,
   DeleteResult,
@@ -13,13 +11,15 @@ import {
   DeleteResult as DeleteResultClass,
   DeleteSuccess,
 } from "../../__generated__/agent/v1/delete_exec_pb";
-import { toolResultToText } from "../utils/tool-result";
+import type { Executor } from "../../vendor/agent-exec";
+import { resolvePath } from "../../vendor/local-exec";
 import {
-  type PiToolContext,
-  decodeToolCallId,
   buildErrorResult,
   createToolResultMessage,
+  decodeToolCallId,
+  type PiToolContext,
 } from "../local-resource-provider/types";
+import { toolResultToText } from "../utils/tool-result";
 
 function buildDeleteResultFromToolResult(
   path: string,
@@ -100,7 +100,7 @@ export class LocalDeleteExecutor implements Executor<DeleteArgs, DeleteResult> {
       result = {
         content: [{ type: "text", text: `Deleted ${pathArg}${sizeText}` }],
         details: undefined,
-      } as any;
+      };
     } catch (error) {
       isError = true;
       result = buildErrorResult(

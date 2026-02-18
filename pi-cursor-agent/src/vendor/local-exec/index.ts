@@ -1,8 +1,12 @@
 export { resolvePath } from "./common";
-export { LocalGitExecutor, type GitExecResult, type GitExecOptions } from "./git-executor";
 export {
-  getGitRepoPath,
-  getGitStatus,
+  type GitExecOptions,
+  type GitExecResult,
+  LocalGitExecutor,
+} from "./git-executor";
+export {
   getGitBranch,
   getGitRemoteUrl,
+  getGitRepoPath,
+  getGitStatus,
 } from "./git-helpers";

@@ -1,25 +1,25 @@
 export {
-  AgentConnectClient,
-  type AgentRpcClient,
-  type AgentConnectRunOptions,
-} from "./connect";
-export {
   CheckpointController,
   type CheckpointHandler,
 } from "./checkpoint-controller";
 export {
+  AgentConnectClient,
+  type AgentConnectRunOptions,
+  type AgentRpcClient,
+} from "./connect";
+export {
   ClientExecController,
-  LostConnection,
   type ControlledExecManager,
+  LostConnection,
 } from "./exec-controller";
 export {
   ClientInteractionController,
   type InteractionListener,
 } from "./interaction-controller";
 export {
-  splitStream,
   type ExecMessage,
   type InteractionMessage,
   type SplitChannels,
   type StallDetector,
+  splitStream,
 } from "./split-stream";

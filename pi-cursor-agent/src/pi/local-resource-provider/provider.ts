@@ -1,47 +1,46 @@
 import type { McpToolDefinition } from "../../__generated__/agent/v1/mcp_pb";
 import {
-  RegistryResourceAccessor,
-  readResource,
-  writeResource,
+  backgroundShellResource,
+  computerUseResource,
   deleteResource,
+  diagnosticsResource,
+  fetchResource,
+  grepResource,
+  hookExecutorResource,
+  listMcpResourcesResource,
+  lsResource,
+  mcpResource,
+  RegistryResourceAccessor,
+  readMcpResourceResource,
+  readResource,
+  recordScreenResource,
+  requestContextResource,
   shellResource,
   shellStreamResource,
-  grepResource,
-  lsResource,
-  diagnosticsResource,
-  requestContextResource,
-  mcpResource,
-  listMcpResourcesResource,
-  readMcpResourceResource,
-  backgroundShellResource,
+  writeResource,
   writeShellStdinResource,
-  fetchResource,
-  recordScreenResource,
-  computerUseResource,
-  hookExecutorResource,
 } from "../../vendor/agent-exec";
-
-import type { PiToolContext } from "./types";
-import { LocalReadExecutor } from "../executors/read";
-import { LocalWriteExecutor } from "../executors/write";
 import { LocalDeleteExecutor } from "../executors/delete";
+import { LocalGrepExecutor } from "../executors/grep";
+import { LocalHookExecutorImpl } from "../executors/hook";
+import { LocalLsExecutor } from "../executors/ls";
+import { LocalReadExecutor } from "../executors/read";
+import { LocalRequestContextExecutor } from "../executors/request-context";
 import { LocalShellExecutor } from "../executors/shell";
 import { LocalShellStreamExecutor } from "../executors/shell-stream";
-import { LocalGrepExecutor } from "../executors/grep";
-import { LocalLsExecutor } from "../executors/ls";
-import { LocalRequestContextExecutor } from "../executors/request-context";
-import { LocalHookExecutorImpl } from "../executors/hook";
 import {
   StubBackgroundShellExecutor,
-  StubWriteShellStdinExecutor,
-  StubFetchExecutor,
+  StubComputerUseExecutor,
   StubDiagnosticsExecutor,
-  StubMcpExecutor,
+  StubFetchExecutor,
   StubListMcpResourcesExecutor,
+  StubMcpExecutor,
   StubReadMcpResourceExecutor,
   StubRecordScreenExecutor,
-  StubComputerUseExecutor,
+  StubWriteShellStdinExecutor,
 } from "../executors/stubs";
+import { LocalWriteExecutor } from "../executors/write";
+import type { PiToolContext } from "./types";
 
 interface LocalResourceProviderOptions {
   ctx: PiToolContext;

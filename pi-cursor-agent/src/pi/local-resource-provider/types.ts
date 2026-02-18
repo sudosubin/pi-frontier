@@ -1,10 +1,10 @@
-import type { AgentTool, AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
 import type {
   ImageContent,
   TextContent,
   ToolResultMessage,
 } from "@mariozechner/pi-ai";
+import type { ExtensionContext } from "@mariozechner/pi-coding-agent";
 
 export interface ToolExecStartEvent {
   type: "start";
@@ -31,6 +31,14 @@ export interface PiToolContext {
   onToolExec?(event: ToolExecEvent): void;
 }
 
+interface ExecutableTool<TArgs extends Record<string, unknown>> {
+  execute(
+    toolCallId: string,
+    params: TArgs,
+    signal?: AbortSignal,
+  ): Promise<AgentToolResult<unknown>>;
+}
+
 export function decodeToolCallId(toolCallId: string | undefined): string {
   return toolCallId && toolCallId.length > 0 ? toolCallId : crypto.randomUUID();
 }
@@ -46,7 +54,7 @@ export function createToolResultMessage(
     toolCallId,
     toolName,
     content: result.content as (TextContent | ImageContent)[],
-    details: (result as any).details,
+    details: result.details,
     isError,
     timestamp: Date.now(),
   };
@@ -56,15 +64,15 @@ export function buildErrorResult(message: string): AgentToolResult<unknown> {
   return {
     content: [{ type: "text", text: message }],
     details: undefined,
-  } as any;
+  };
 }
 
-export async function executePiTool(
+export async function executePiTool<TArgs extends Record<string, unknown>>(
   ctx: PiToolContext,
-  tool: AgentTool<any>,
+  tool: ExecutableTool<TArgs>,
   toolName: string,
   toolCallId: string,
-  args: Record<string, unknown>,
+  args: TArgs,
 ): Promise<ToolResultMessage> {
   const extCtx = ctx.getCtx();
   if (extCtx?.hasUI) {
@@ -79,7 +87,7 @@ export async function executePiTool(
   let result: AgentToolResult<unknown>;
   let isError = false;
   try {
-    result = await tool.execute(toolCallId, args as any, ctx.signal, undefined);
+    result = await tool.execute(toolCallId, args, ctx.signal);
   } catch (error) {
     isError = true;
     result = buildErrorResult(

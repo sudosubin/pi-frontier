@@ -1,6 +1,5 @@
-import { createGrepTool } from "@mariozechner/pi-coding-agent";
 import type { ToolResultMessage } from "@mariozechner/pi-ai";
-import type { Executor } from "../../vendor/agent-exec";
+import { createGrepTool } from "@mariozechner/pi-coding-agent";
 import type {
   GrepArgs,
   GrepResult,
@@ -17,8 +16,16 @@ import {
   GrepSuccess,
   GrepUnionResult,
 } from "../../__generated__/agent/v1/grep_exec_pb";
-import { toolResultToText, toolResultDetailBoolean } from "../utils/tool-result";
-import { type PiToolContext, decodeToolCallId, executePiTool } from "../local-resource-provider/types";
+import type { Executor } from "../../vendor/agent-exec";
+import {
+  decodeToolCallId,
+  executePiTool,
+  type PiToolContext,
+} from "../local-resource-provider/types";
+import {
+  toolResultDetailBoolean,
+  toolResultToText,
+} from "../utils/tool-result";
 
 function extractGrepFileFromLine(line: string): string | null {
   const matchLine = line.match(/^(.+?):\d+:/);
@@ -217,12 +224,16 @@ export class LocalGrepExecutor implements Executor<GrepArgs, GrepResult> {
       toolCallId,
       {
         pattern: args.pattern,
-        path: args.path || undefined,
-        glob: args.glob || undefined,
-        ignoreCase: args.caseInsensitive || undefined,
-        context:
-          args.context ?? args.contextBefore ?? args.contextAfter ?? undefined,
-        limit: args.headLimit ?? undefined,
+        ...(args.path ? { path: args.path } : {}),
+        ...(args.glob ? { glob: args.glob } : {}),
+        ...(args.caseInsensitive ? { ignoreCase: true } : {}),
+        ...((args.context ?? args.contextBefore ?? args.contextAfter) != null
+          ? {
+              context:
+                args.context ?? args.contextBefore ?? args.contextAfter ?? 0,
+            }
+          : {}),
+        ...(args.headLimit != null ? { limit: args.headLimit } : {}),
       },
     );
 

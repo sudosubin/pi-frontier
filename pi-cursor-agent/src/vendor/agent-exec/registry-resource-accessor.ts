@@ -23,7 +23,10 @@ export class RegistryResourceAccessor implements ResourceAccessor {
   private readonly resources = new Map<symbol, ResourceDescriptor>();
 
   register(resource: ResourceLike, value: unknown): void {
-    this.resources.set(resource.symbol, new ResourceDescriptor(resource, value));
+    this.resources.set(
+      resource.symbol,
+      new ResourceDescriptor(resource, value),
+    );
   }
 
   get(resource: ResourceLike): unknown | undefined {

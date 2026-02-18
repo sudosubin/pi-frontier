@@ -1,11 +1,11 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { ConversationStateStructure } from "../__generated__/agent/v1/agent_pb";
-import { AgentStore, toHex, fromHex } from "../vendor/agent-kv";
 import {
+  applySnapshotToStore,
   ensureAgentStore as ensureStore,
   persistAgentStore as persistStore,
-  applySnapshotToStore,
 } from "../lib/agent-store";
+import { type AgentStore, fromHex, toHex } from "../vendor/agent-kv";
 import { PI_CURSOR_AGENT_CACHE_DIR } from "./env";
 
 export const CURSOR_STATE_ENTRY_TYPE = "pi-cursor-agent:state";
@@ -17,20 +17,28 @@ interface AgentStoreSnapshot {
   conversationState?: string;
 }
 
+const isAgentStoreSnapshot = (value: unknown): value is AgentStoreSnapshot => {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+
+  const snapshot = value as Partial<AgentStoreSnapshot>;
+  return (
+    snapshot.version === 1 &&
+    typeof snapshot.agentId === "string" &&
+    typeof snapshot.latestRootBlobId === "string"
+  );
+};
+
 const findSnapshot = (entries: SessionEntry[]): AgentStoreSnapshot | null => {
   for (let i = entries.length - 1; i >= 0; i--) {
-    const e = entries[i]!;
-    if (e.type !== "custom" || e.customType !== CURSOR_STATE_ENTRY_TYPE) {
+    const e = entries[i];
+    if (!e || e.type !== "custom" || e.customType !== CURSOR_STATE_ENTRY_TYPE) {
       continue;
     }
-    const d = e.data as Record<string, unknown> | null;
-    if (
-      d != null &&
-      d["version"] === 1 &&
-      typeof d["agentId"] === "string" &&
-      typeof d["latestRootBlobId"] === "string"
-    ) {
-      return d as unknown as AgentStoreSnapshot;
+
+    if (isAgentStoreSnapshot(e.data)) {
+      return e.data;
     }
   }
   return null;

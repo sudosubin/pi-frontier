@@ -1,24 +1,20 @@
-import type { Executor } from "../../vendor/agent-exec";
-
 import type { BackgroundShellSpawnArgs } from "../../__generated__/agent/v1/background_shell_exec_pb";
 import { BackgroundShellSpawnResult } from "../../__generated__/agent/v1/background_shell_exec_pb";
-import type { WriteShellStdinArgs } from "../../__generated__/agent/v1/write_shell_stdin_tool_pb";
+import type { ComputerUseArgs } from "../../__generated__/agent/v1/computer_use_tool_pb";
 import {
-  WriteShellStdinError,
-  WriteShellStdinResult,
-} from "../../__generated__/agent/v1/write_shell_stdin_tool_pb";
-import type { FetchArgs } from "../../__generated__/agent/v1/fetch_tool_pb";
-import {
-  FetchError,
-  FetchResult,
-} from "../../__generated__/agent/v1/fetch_tool_pb";
+  ComputerUseError,
+  ComputerUseResult,
+} from "../../__generated__/agent/v1/computer_use_tool_pb";
 import type { DiagnosticsArgs } from "../../__generated__/agent/v1/diagnostics_exec_pb";
 import {
   DiagnosticsResult,
   DiagnosticsSuccess,
 } from "../../__generated__/agent/v1/diagnostics_exec_pb";
-import type { McpArgs } from "../../__generated__/agent/v1/mcp_tool_pb";
-import { McpError, McpResult } from "../../__generated__/agent/v1/mcp_tool_pb";
+import type { FetchArgs } from "../../__generated__/agent/v1/fetch_tool_pb";
+import {
+  FetchError,
+  FetchResult,
+} from "../../__generated__/agent/v1/fetch_tool_pb";
 import type {
   ListMcpResourcesExecArgs,
   ReadMcpResourceExecArgs,
@@ -29,22 +25,24 @@ import {
   ReadMcpResourceExecResult,
   ReadMcpResourceRejected,
 } from "../../__generated__/agent/v1/mcp_resource_tool_pb";
+import type { McpArgs } from "../../__generated__/agent/v1/mcp_tool_pb";
+import { McpError, McpResult } from "../../__generated__/agent/v1/mcp_tool_pb";
 import type { RecordScreenArgs } from "../../__generated__/agent/v1/record_screen_tool_pb";
 import {
   RecordScreenFailure,
   RecordScreenResult,
 } from "../../__generated__/agent/v1/record_screen_tool_pb";
-import type { ComputerUseArgs } from "../../__generated__/agent/v1/computer_use_tool_pb";
-import {
-  ComputerUseError,
-  ComputerUseResult,
-} from "../../__generated__/agent/v1/computer_use_tool_pb";
 import { ShellRejected } from "../../__generated__/agent/v1/shell_exec_pb";
+import type { WriteShellStdinArgs } from "../../__generated__/agent/v1/write_shell_stdin_tool_pb";
+import {
+  WriteShellStdinError,
+  WriteShellStdinResult,
+} from "../../__generated__/agent/v1/write_shell_stdin_tool_pb";
+import type { Executor } from "../../vendor/agent-exec";
 
-export class StubBackgroundShellExecutor implements Executor<
-  BackgroundShellSpawnArgs,
-  BackgroundShellSpawnResult
-> {
+export class StubBackgroundShellExecutor
+  implements Executor<BackgroundShellSpawnArgs, BackgroundShellSpawnResult>
+{
   async execute(_ctx: unknown, args: BackgroundShellSpawnArgs) {
     return new BackgroundShellSpawnResult({
       result: {
@@ -60,10 +58,9 @@ export class StubBackgroundShellExecutor implements Executor<
   }
 }
 
-export class StubWriteShellStdinExecutor implements Executor<
-  WriteShellStdinArgs,
-  WriteShellStdinResult
-> {
+export class StubWriteShellStdinExecutor
+  implements Executor<WriteShellStdinArgs, WriteShellStdinResult>
+{
   async execute() {
     return new WriteShellStdinResult({
       result: {
@@ -85,10 +82,9 @@ export class StubFetchExecutor implements Executor<FetchArgs, FetchResult> {
   }
 }
 
-export class StubDiagnosticsExecutor implements Executor<
-  DiagnosticsArgs,
-  DiagnosticsResult
-> {
+export class StubDiagnosticsExecutor
+  implements Executor<DiagnosticsArgs, DiagnosticsResult>
+{
   async execute() {
     return new DiagnosticsResult({
       result: {
@@ -113,10 +109,9 @@ export class StubMcpExecutor implements Executor<McpArgs, McpResult> {
   }
 }
 
-export class StubListMcpResourcesExecutor implements Executor<
-  ListMcpResourcesExecArgs,
-  ListMcpResourcesExecResult
-> {
+export class StubListMcpResourcesExecutor
+  implements Executor<ListMcpResourcesExecArgs, ListMcpResourcesExecResult>
+{
   async execute() {
     return new ListMcpResourcesExecResult({
       result: {
@@ -127,10 +122,9 @@ export class StubListMcpResourcesExecutor implements Executor<
   }
 }
 
-export class StubReadMcpResourceExecutor implements Executor<
-  ReadMcpResourceExecArgs,
-  ReadMcpResourceExecResult
-> {
+export class StubReadMcpResourceExecutor
+  implements Executor<ReadMcpResourceExecArgs, ReadMcpResourceExecResult>
+{
   async execute(_ctx: unknown, args: ReadMcpResourceExecArgs) {
     return new ReadMcpResourceExecResult({
       result: {
@@ -144,10 +138,9 @@ export class StubReadMcpResourceExecutor implements Executor<
   }
 }
 
-export class StubRecordScreenExecutor implements Executor<
-  RecordScreenArgs,
-  RecordScreenResult
-> {
+export class StubRecordScreenExecutor
+  implements Executor<RecordScreenArgs, RecordScreenResult>
+{
   async execute() {
     return new RecordScreenResult({
       result: {
@@ -158,10 +151,9 @@ export class StubRecordScreenExecutor implements Executor<
   }
 }
 
-export class StubComputerUseExecutor implements Executor<
-  ComputerUseArgs,
-  ComputerUseResult
-> {
+export class StubComputerUseExecutor
+  implements Executor<ComputerUseArgs, ComputerUseResult>
+{
   async execute() {
     return new ComputerUseResult({
       result: {

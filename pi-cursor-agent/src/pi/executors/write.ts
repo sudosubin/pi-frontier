@@ -1,10 +1,8 @@
-import { createWriteTool } from "@mariozechner/pi-coding-agent";
-import type { AgentToolResult } from "@mariozechner/pi-agent-core";
-import type { ToolResultMessage } from "@mariozechner/pi-ai";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { Executor } from "../../vendor/agent-exec";
-import { resolvePath } from "../../vendor/local-exec";
+import type { AgentToolResult } from "@mariozechner/pi-agent-core";
+import type { ToolResultMessage } from "@mariozechner/pi-ai";
+import { createWriteTool } from "@mariozechner/pi-coding-agent";
 import type {
   WriteArgs,
   WriteResult,
@@ -15,14 +13,16 @@ import {
   WriteResult as WriteResultClass,
   WriteSuccess,
 } from "../../__generated__/agent/v1/write_exec_pb";
-import { toolResultToText } from "../utils/tool-result";
+import type { Executor } from "../../vendor/agent-exec";
+import { resolvePath } from "../../vendor/local-exec";
 import {
-  type PiToolContext,
-  decodeToolCallId,
-  executePiTool,
   buildErrorResult,
   createToolResultMessage,
+  decodeToolCallId,
+  executePiTool,
+  type PiToolContext,
 } from "../local-resource-provider/types";
+import { toolResultToText } from "../utils/tool-result";
 
 function buildWriteResultFromToolResult(
   args: {
@@ -163,7 +163,7 @@ export class LocalWriteExecutor implements Executor<WriteArgs, WriteResult> {
           },
         ],
         details: undefined,
-      } as any;
+      };
     } catch (error) {
       isError = true;
       result = buildErrorResult(

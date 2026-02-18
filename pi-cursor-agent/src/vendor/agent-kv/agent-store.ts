@@ -1,8 +1,6 @@
-import {
-  ConversationStateStructure,
-} from "../../__generated__/agent/v1/agent_pb";
-import type { BlobStore } from "./controlled";
+import { ConversationStateStructure } from "../../__generated__/agent/v1/agent_pb";
 import { getBlobId } from "./blob-store";
+import type { BlobStore } from "./controlled";
 import { ProtoSerde } from "./serde";
 
 export const AgentModes = [
@@ -38,10 +36,7 @@ export function getDefaultAgentMetadata(agentId?: string): AgentMetadata {
 export interface MetadataStore {
   get<K extends keyof AgentMetadata>(key: K): AgentMetadata[K];
   set<K extends keyof AgentMetadata>(key: K, value: AgentMetadata[K]): void;
-  subscribe(
-    key: keyof AgentMetadata,
-    listener: () => void,
-  ): () => void;
+  subscribe(key: keyof AgentMetadata, listener: () => void): () => void;
 }
 
 export class AgentStore {

@@ -1,18 +1,18 @@
-import type {
-  ExtensionAPI,
-  ExtensionContext,
-} from "@mariozechner/pi-coding-agent";
 import {
-  createAssistantMessageEventStream,
   type Api,
   type AssistantMessage,
   type AssistantMessageEventStream,
   type Context,
+  createAssistantMessageEventStream,
   type Model,
   type SimpleStreamOptions,
   type TextContent,
   type ThinkingContent,
 } from "@mariozechner/pi-ai";
+import type {
+  ExtensionAPI,
+  ExtensionContext,
+} from "@mariozechner/pi-coding-agent";
 import type { ConversationStateStructure } from "./__generated__/agent/v1/agent_pb";
 import {
   AskQuestionRejected,
@@ -20,8 +20,6 @@ import {
 } from "./__generated__/agent/v1/ask_question_tool_pb";
 import AgentService from "./api/agent-service";
 import { CURSOR_API_URL, CURSOR_CLIENT_VERSION } from "./lib/env";
-import { toCursorId } from "./pi/model-mapping";
-import { buildRunRequest, getContextTools } from "./pi/request-builder";
 import {
   CURSOR_STATE_ENTRY_TYPE,
   ensureAgentStore,
@@ -32,15 +30,17 @@ import {
   type PiToolContext,
   type ToolExecEvent,
 } from "./pi/local-resource-provider";
+import { toCursorId } from "./pi/model-mapping";
+import { buildRunRequest, getContextTools } from "./pi/request-builder";
 import {
   AgentConnectClient,
   type CheckpointHandler,
   type InteractionListener,
 } from "./vendor/agent-client";
 import type {
-  CoreInteractionUpdate,
   CoreInteractionQuery,
   CoreInteractionResponse,
+  CoreInteractionUpdate,
 } from "./vendor/agent-core";
 
 function createCheckpointHandler(
@@ -111,6 +111,30 @@ function createInteractionListenerAdapter(
   };
 }
 
+type ToolExecStreamEvent =
+  | {
+      type: "tool_exec_start";
+      toolCallId: string;
+      toolName: string;
+      args: Record<string, unknown>;
+    }
+  | {
+      type: "tool_exec_end";
+      toolCallId: string;
+      toolName: string;
+      result: { content: unknown; details: unknown };
+      isError: boolean;
+    };
+
+type StreamWithToolExecEvents = AssistantMessageEventStream & {
+  push(event: ToolExecStreamEvent): void;
+};
+
+type CursorAssistantMessage = AssistantMessage & {
+  duration?: number;
+  ttft?: number;
+};
+
 export function streamCursorAgent(
   pi: ExtensionAPI,
   getCtx: () => ExtensionContext | null,
@@ -119,12 +143,13 @@ export function streamCursorAgent(
   options?: SimpleStreamOptions,
 ): AssistantMessageEventStream {
   const stream = createAssistantMessageEventStream();
+  const streamWithToolExecEvents = stream as StreamWithToolExecEvents;
 
   (async () => {
     const startTime = Date.now();
     let firstTokenTime: number | undefined;
 
-    const output: AssistantMessage = {
+    const output: CursorAssistantMessage = {
       role: "assistant",
       content: [],
       api: model.api,
@@ -215,14 +240,14 @@ export function streamCursorAgent(
         if (event.type === "start") {
           finalizeTextBlock();
           finalizeThinkingBlock();
-          (stream as any).push({
+          streamWithToolExecEvents.push({
             type: "tool_exec_start",
             toolCallId: event.toolCallId,
             toolName: event.toolName,
             args: event.args,
           });
         } else {
-          (stream as any).push({
+          streamWithToolExecEvents.push({
             type: "tool_exec_end",
             toolCallId: event.toolCallId,
             toolName: event.toolName,
@@ -349,9 +374,9 @@ export function streamCursorAgent(
         cacheWrite: 0,
         total: 0,
       };
-      (output as any).duration = Date.now() - startTime;
+      output.duration = Date.now() - startTime;
       if (firstTokenTime) {
-        (output as any).ttft = firstTokenTime - startTime;
+        output.ttft = firstTokenTime - startTime;
       }
 
       stream.push({ type: "done", reason: "stop", message: output });
@@ -360,11 +385,12 @@ export function streamCursorAgent(
       output.stopReason = options?.signal?.aborted ? "aborted" : "error";
       output.errorMessage =
         error instanceof Error ? error.message : String(error);
-      (output as any).duration = Date.now() - startTime;
-      if (firstTokenTime) (output as any).ttft = firstTokenTime - startTime;
+      output.duration = Date.now() - startTime;
+      if (firstTokenTime) output.ttft = firstTokenTime - startTime;
+      const errorReason = output.stopReason === "aborted" ? "aborted" : "error";
       stream.push({
         type: "error",
-        reason: output.stopReason as any,
+        reason: errorReason,
         error: output,
       });
       stream.end();

@@ -1,3 +1,4 @@
+import { type JsonValue, Value } from "@bufbuild/protobuf";
 import type {
   Api,
   Context,
@@ -7,7 +8,6 @@ import type {
   Tool,
   ToolResultMessage,
 } from "@mariozechner/pi-ai";
-import { type JsonValue, Value } from "@bufbuild/protobuf";
 import {
   AgentClientMessage,
   AgentConversationTurnStructure,
@@ -15,20 +15,20 @@ import {
   AssistantMessage as AssistantMessageProto,
   ConversationAction,
   type ConversationStateStructure,
+  ConversationStateStructure as ConversationStateStructureClass,
   ConversationStep,
   ConversationTurnStructure,
   ModelDetails,
   UserMessage,
   UserMessageAction,
-  ConversationStateStructure as ConversationStateStructureClass,
 } from "../__generated__/agent/v1/agent_pb";
 import {
   type McpToolDefinition,
   McpToolDefinition as McpToolDefinitionClass,
   McpTools,
 } from "../__generated__/agent/v1/mcp_pb";
+import { type BlobStore, getBlobId } from "../vendor/agent-kv";
 import { toolResultToText } from "./utils/tool-result";
-import { getBlobId, type BlobStore } from "../vendor/agent-kv";
 
 const CURSOR_NATIVE_TOOL_NAMES = new Set([
   "bash",

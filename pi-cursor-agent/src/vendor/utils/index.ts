@@ -1,5 +1,5 @@
 export {
   MapWritable,
-  WriteIterableClosedError,
   type Writable,
+  WriteIterableClosedError,
 } from "./map-writable";
