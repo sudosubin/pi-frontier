@@ -29,6 +29,7 @@ export default {
         name: "conventionalcommits",
         scope,
         scopeOnly: true,
+        preMajor: true,
         bumpStrict: true,
       },
       tagOpts: { prefix: `${scope}@` },
