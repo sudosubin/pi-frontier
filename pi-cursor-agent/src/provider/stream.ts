@@ -26,6 +26,7 @@ import {
 } from "../bridge/cursor-to-pi/local-resource-provider";
 import {
   rejectPendingForSession,
+  resolveToolResult,
   type ToolExecRequest,
 } from "../bridge/cursor-to-pi/tool-bridge";
 import { preparePiContext } from "../bridge/pi-context";
@@ -368,8 +369,28 @@ export function streamCursorAgent(
     };
     let session: LiveSession | undefined;
 
+    // True when this provider session IS the host pi session. Extension-driven
+    // sessions (e.g. pi-fusion panels pass their own `pi-fusion-<uuid>` id)
+    // must not write their provider state into the host session's log, or a
+    // later resume restores the child's (empty) conversation instead of the
+    // user's. Their state still persists to the on-disk agent store.
+    const isHostSession = getCtx()?.sessionManager.getSessionId() === sessionId;
+    const entryState = isHostSession ? state : createOverlayState(state);
+
     try {
       session = getLiveSession(sessionId);
+
+      if (session) {
+        // Follow-up call for an already-live session: deliver any tool results
+        // carried in the request to the pending tool bridge. Hosts that run
+        // their own tool loop outside pi's agent loop (e.g. pi-fusion panels)
+        // never fire pi's tool_execution_end event, so without this the
+        // backend executor awaits its result forever and the stream hangs.
+        // resolveToolResult is a no-op for ids that are not pending.
+        for (const msg of context.messages) {
+          if (msg.role === "toolResult") resolveToolResult(msg);
+        }
+      }
 
       if (!session) {
         const apiKey = options?.apiKey;
@@ -426,7 +447,7 @@ export function streamCursorAgent(
           if (!snapshot || snapshot.latestRootBlobId === lastFlushedRootBlobId)
             return;
           lastFlushedRootBlobId = snapshot.latestRootBlobId;
-          pi.appendEntry(CURSOR_STATE_ENTRY_TYPE, snapshot);
+          if (isHostSession) pi.appendEntry(CURSOR_STATE_ENTRY_TYPE, snapshot);
         };
 
         const handleInteractionUpdate = (update: CoreInteractionUpdate) => {
@@ -541,10 +562,10 @@ export function streamCursorAgent(
       };
 
       if (result.reason === "toolUse" && result.tools.length > 0) {
-        emitToolCalls(result.tools, output, stream, state);
+        emitToolCalls(result.tools, output, stream, entryState);
         output.stopReason = "toolUse";
 
-        state.rememberAssistantContent({
+        entryState.rememberAssistantContent({
           timestamp: output.timestamp,
           blocks: serializeContentBlocks(output.content),
         });
@@ -560,7 +581,7 @@ export function streamCursorAgent(
       } else {
         output.stopReason = "stop";
 
-        state.rememberAssistantContent({
+        entryState.rememberAssistantContent({
           timestamp: output.timestamp,
           blocks: serializeContentBlocks(output.content),
         });
