@@ -18,7 +18,14 @@ export interface ParsedPiContext {
 }
 
 // Stable structural markers only — no description text that may change across Pi versions.
-const CONTEXT_HEADING = "# Project Context";
+// Pi ≥ 0.85 emits context files as <project_context>/<project_instructions>
+// XML blocks; earlier versions used a "# Project Context" heading with
+// "## /abs/path" sections. Both formats are supported.
+const CONTEXT_OPEN = "<project_context>";
+const CONTEXT_CLOSE = "</project_context>";
+const CONTEXT_FILE_RE =
+  /<project_instructions path="([^"]*)">\n?([\s\S]*?)<\/project_instructions>/g;
+const LEGACY_CONTEXT_HEADING = "# Project Context";
 const SKILLS_OPEN = "<available_skills>";
 const SKILLS_CLOSE = "</available_skills>";
 
@@ -35,7 +42,32 @@ function unescapeXml(s: string): string {
 }
 
 function extractContextFiles(prompt: string): PiContextFile[] {
-  const start = prompt.indexOf(CONTEXT_HEADING);
+  const xmlFiles = extractXmlContextFiles(prompt);
+  if (xmlFiles.length > 0) return xmlFiles;
+  return extractLegacyContextFiles(prompt);
+}
+
+function extractXmlContextFiles(prompt: string): PiContextFile[] {
+  const openIdx = prompt.indexOf(CONTEXT_OPEN);
+  if (openIdx === -1) return [];
+
+  const closeIdx = prompt.indexOf(CONTEXT_CLOSE, openIdx);
+  const xml = prompt.slice(
+    openIdx,
+    closeIdx === -1 ? prompt.length : closeIdx + CONTEXT_CLOSE.length,
+  );
+
+  const files: PiContextFile[] = [];
+  for (const m of xml.matchAll(CONTEXT_FILE_RE)) {
+    const path = (m[1] ?? "").trim();
+    const content = (m[2] ?? "").trim();
+    if (path && content) files.push({ path, content });
+  }
+  return files;
+}
+
+function extractLegacyContextFiles(prompt: string): PiContextFile[] {
+  const start = prompt.indexOf(LEGACY_CONTEXT_HEADING);
   if (start === -1) return [];
 
   let end = prompt.length;

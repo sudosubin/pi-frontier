@@ -15,6 +15,8 @@ function buildPrompt(
     contextDescription?: string;
     skillsIntro?: string;
     piDocs?: boolean;
+    /** Emit context files in the Pi ≥ 0.85 XML format instead of the legacy heading format. */
+    xmlContext?: boolean;
   } = {},
 ): string {
   let p =
@@ -26,8 +28,17 @@ function buildPrompt(
     const desc =
       opts.contextDescription ??
       "Project-specific instructions and guidelines:";
-    p += `\n\n# Project Context\n\n${desc}\n\n`;
-    for (const f of opts.contextFiles) p += `## ${f.path}\n\n${f.content}\n\n`;
+    if (opts.xmlContext) {
+      p += `\n\n<project_context>\n\n${desc}\n\n`;
+      for (const f of opts.contextFiles) {
+        p += `<project_instructions path="${f.path}">\n${f.content}\n</project_instructions>\n\n`;
+      }
+      p += "</project_context>\n";
+    } else {
+      p += `\n\n# Project Context\n\n${desc}\n\n`;
+      for (const f of opts.contextFiles)
+        p += `## ${f.path}\n\n${f.content}\n\n`;
+    }
   }
 
   if (opts.skills?.length) {
@@ -70,6 +81,63 @@ test("extracts context files and skills", () => {
   assert.ok(result.contextFiles[1]?.content.includes("Project rules."));
   assert.equal(result.skills.length, 1);
   assert.equal(result.skills[0]?.name, "react");
+});
+
+test("extracts context files from Pi 0.85+ XML format", () => {
+  const result = parsePiSystemPrompt(
+    buildPrompt({
+      xmlContext: true,
+      contextFiles: [
+        { path: "/global/AGENTS.md", content: "Global rules." },
+        { path: "/project/AGENTS.md", content: "Project rules." },
+      ],
+      skills: [
+        {
+          name: "react",
+          description: "React guide.",
+          location: "/skills/react/SKILL.md",
+        },
+      ],
+    }),
+  );
+
+  assert.equal(result.contextFiles.length, 2);
+  assert.equal(result.contextFiles[0]?.path, "/global/AGENTS.md");
+  assert.equal(result.contextFiles[0]?.content, "Global rules.");
+  assert.equal(result.contextFiles[1]?.path, "/project/AGENTS.md");
+  assert.equal(result.contextFiles[1]?.content, "Project rules.");
+  assert.equal(result.skills.length, 1);
+  assert.equal(result.skills[0]?.name, "react");
+});
+
+test("XML format preserves markdown headings inside context file content", () => {
+  const content =
+    "Instructions\n\n# Project Context\n\n## Commands\n\n## /not/a/file\n\nRun tests.";
+  const result = parsePiSystemPrompt(
+    buildPrompt({
+      xmlContext: true,
+      contextFiles: [{ path: "/project/AGENTS.md", content }],
+    }),
+  );
+
+  assert.equal(result.contextFiles.length, 1);
+  assert.equal(result.contextFiles[0]?.path, "/project/AGENTS.md");
+  assert.equal(result.contextFiles[0]?.content, content);
+});
+
+test("cleanedPrompt strips XML-format context block", () => {
+  const result = parsePiSystemPrompt(
+    buildPrompt({
+      xmlContext: true,
+      contextFiles: [{ path: "/AGENTS.md", content: "Secret project rules." }],
+      piDocs: true,
+    }),
+  );
+
+  assert.ok(result.cleanedPrompt.includes("Current date:"));
+  assert.ok(result.cleanedPrompt.includes("Pi documentation"));
+  assert.ok(!result.cleanedPrompt.includes("<project_context>"));
+  assert.ok(!result.cleanedPrompt.includes("Secret project rules."));
 });
 
 test("cleanedPrompt keeps metadata and Pi documentation", () => {
