@@ -1,3 +1,6 @@
+import * as http2 from "node:http2";
+import * as net from "node:net";
+import * as tls from "node:tls";
 import {
   type Client,
   createClient,
@@ -99,6 +102,32 @@ export function wrapAbortSafeStream(
   };
 }
 
+let http2SessionGuarded = false;
+function ensureHttp2SessionGuard(): void {
+  if (http2SessionGuarded) {
+    return;
+  }
+  http2SessionGuarded = true;
+
+  const originalConnect = http2.connect;
+  Reflect.set(
+    http2,
+    "connect",
+    function (
+      this: typeof http2,
+      authority: Parameters<typeof originalConnect>[0],
+      options?: Parameters<typeof originalConnect>[1],
+      listener?: Parameters<typeof originalConnect>[2],
+    ) {
+      const session = originalConnect.call(this, authority, options, listener);
+      // Attach a persistent no-op error listener to prevent unhandled socket/session error events
+      // from escaping as uncaughtException when ConnectRPC's Http2SessionManager detaches its error listener.
+      session.on("error", () => {});
+      return session;
+    },
+  );
+}
+
 class AgentService {
   private readonly client: Client<typeof AgentServiceDef>;
 
@@ -112,9 +141,36 @@ class AgentService {
       return next(req);
     };
 
+    ensureHttp2SessionGuard();
+
     const transport = createConnectTransport({
       baseUrl,
       httpVersion: "2",
+      nodeOptions: {
+        createConnection(authority, options) {
+          const isHttps =
+            authority.protocol === "https:" || !authority.protocol;
+          if (isHttps) {
+            const socket = tls.connect({
+              host: authority.hostname,
+              port: Number(authority.port || 443),
+              servername: authority.hostname,
+              ALPNProtocols: ["h2"],
+              ...options,
+            });
+            // Guard against socket ECONNRESET during TLS handshake or teardown from bubbling to uncaughtException
+            socket.on("error", () => {});
+            return socket;
+          }
+          const socket = net.connect({
+            host: authority.hostname,
+            port: Number(authority.port || 80),
+            ...options,
+          });
+          socket.on("error", () => {});
+          return socket;
+        },
+      },
       interceptors: [authInterceptor],
     });
 

@@ -67,7 +67,18 @@ function createNoopStallDetector(): StallDetector {
 
 function isRetriableError(error: unknown): boolean {
   if (error instanceof LostConnection) return true;
-  if (error instanceof Error && error.message.includes("NGHTTP2")) return true;
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    if (
+      msg.includes("nghttp2") ||
+      msg.includes("econnreset") ||
+      msg.includes("client network socket disconnected") ||
+      msg.includes("socket hang up") ||
+      msg.includes("connection closed")
+    ) {
+      return true;
+    }
+  }
   return false;
 }
 
