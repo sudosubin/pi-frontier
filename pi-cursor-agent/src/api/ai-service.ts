@@ -35,7 +35,7 @@ class AiService {
   }
 
   public async getUsableModels() {
-    return this.client.getUsableModels({});
+    return this.client.getUsableModels({}, { timeoutMs: 15_000 });
   }
 }
 

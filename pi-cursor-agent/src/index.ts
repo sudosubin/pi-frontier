@@ -55,7 +55,16 @@ const login = async (
   callbacks: OAuthLoginCallbacks,
 ): Promise<OAuthCredentials> => {
   const credentials = await auth.login(callbacks);
-  updateCachedModelsInBackground(credentials.access);
+  if (getCachedPiModels().length === 0) {
+    // Pi refreshes its registry after login. Populate the first catalog before
+    // returning so that refresh cannot race an empty cache.
+    callbacks.onProgress?.("Loading Cursor models...");
+    await updateCachedPiModelsIfStale(() =>
+      createAiService(credentials.access),
+    ).catch(() => {}); // Model discovery failure must not discard valid credentials.
+  } else {
+    updateCachedModelsInBackground(credentials.access);
+  }
   return credentials;
 };
 
@@ -138,6 +147,12 @@ export default (pi: ExtensionAPI) => {
       login,
       refreshToken,
       getApiKey: (cred) => cred.access,
+      // Registration captures a snapshot. Re-read the cache on registry refresh
+      // so /models and /scoped-models see models discovered after startup.
+      modifyModels: (models) => [
+        ...models.filter((model) => model.provider !== "cursor-agent"),
+        ...getCachedPiModels(),
+      ],
     },
   });
 };

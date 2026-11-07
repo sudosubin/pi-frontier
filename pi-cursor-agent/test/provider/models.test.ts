@@ -46,7 +46,7 @@ test("fresh cached models are available synchronously without constructing AiSer
   });
 });
 
-test("expired, missing, malformed, and undated caches trigger service creation", async (t) => {
+test("stale, missing, malformed, and empty caches trigger service creation", async (t) => {
   const cases = {
     expired: () =>
       cache(new Date(Date.now() - 24 * 60 * 60 * 1000 - 1000).toISOString()),
@@ -54,6 +54,11 @@ test("expired, missing, malformed, and undated caches trigger service creation",
     malformed: () => fs.writeFileSync(cacheFile, "not json"),
     undated: () => cache(),
     invalidDate: () => cache("invalid date"),
+    empty: () =>
+      fs.writeFileSync(
+        cacheFile,
+        JSON.stringify({ models: [], lastUpdatedAt: new Date().toISOString() }),
+      ),
   };
   for (const [name, prepare] of Object.entries(cases)) {
     await t.test(name, async () => {

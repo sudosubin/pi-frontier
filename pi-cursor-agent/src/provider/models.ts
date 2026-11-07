@@ -51,7 +51,7 @@ const readCache = (): CachedModelsFile | undefined => {
 };
 
 const isCacheStale = (cache: CachedModelsFile | undefined): boolean => {
-  if (!cache?.lastUpdatedAt) {
+  if (!cache?.models?.length || !cache.lastUpdatedAt) {
     return true;
   }
 
