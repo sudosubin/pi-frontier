@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import type { Api, Model } from "@mariozechner/pi-ai";
 import type { ModelDetails } from "../__generated__/agent/v1/agent_pb";
-import type AiService from "../api/ai-service";
 import { CURSOR_API_URL } from "../lib/env";
 import {
   PI_CURSOR_AGENT_CACHE_DIR,
@@ -14,6 +13,10 @@ import { findPiModelOverride, type PiModelOverride } from "./model-override";
 interface CachedModelsFile {
   models: ModelDetails[];
   lastUpdatedAt?: string;
+}
+
+interface ModelService {
+  getUsableModels(): Promise<{ models: ModelDetails[] }>;
 }
 
 let updateInFlight: Promise<void> | null = null;
@@ -71,7 +74,7 @@ export const getCachedPiModels = (): Model<Api>[] => {
   });
 };
 
-export const updateCachedPiModels = async (ai: AiService) => {
+export const updateCachedPiModels = async (ai: ModelService) => {
   const [response] = await Promise.all([
     ai.getUsableModels(),
     fs.promises.mkdir(PI_CURSOR_AGENT_CACHE_DIR, { recursive: true }),
@@ -88,7 +91,9 @@ export const updateCachedPiModels = async (ai: AiService) => {
   );
 };
 
-export const updateCachedPiModelsIfStale = async (ai: AiService) => {
+export const updateCachedPiModelsIfStale = async (
+  createAi: () => ModelService | Promise<ModelService>,
+) => {
   if (updateInFlight) {
     await updateInFlight;
     return;
@@ -98,9 +103,14 @@ export const updateCachedPiModelsIfStale = async (ai: AiService) => {
     return;
   }
 
-  updateInFlight = updateCachedPiModels(ai).finally(() => {
-    updateInFlight = null;
-  });
+  // Check freshness before loading the transport/protobuf graph. The shared
+  // promise covers service creation too, not just the subsequent network call.
+  updateInFlight = Promise.resolve()
+    .then(createAi)
+    .then(updateCachedPiModels)
+    .finally(() => {
+      updateInFlight = null;
+    });
 
   await updateInFlight;
 };
