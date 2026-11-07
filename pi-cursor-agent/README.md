@@ -48,6 +48,25 @@ The following models are available through the Cursor Agent provider. Canonical 
 | `composer-2-fast` | `composer-2-fast` | Composer 2 Fast (Cursor) |
 | `kimi-k2.5` | `kimi-k2.5` | Kimi K2.5 (Cursor) |
 
+## Startup and model caching
+
+Provider registration and the cached model list are available immediately. The
+Cursor execution runtime is loaded only on the first Cursor request, so sessions
+using other providers do not pay its import cost. The first Cursor request pays
+that deferred initialization cost; later requests reuse the loaded runtime.
+
+The model-discovery service is loaded and constructed only when the model cache
+needs refreshing (24-hour TTL, missing cache, or an invalid timestamp). Concurrent
+refresh attempts share one service creation and fetch. Existing cached models
+remain available while a refresh is pending.
+
+Session/branch state is restored before the first Cursor request and refreshed on
+subsequent session/tree events once the runtime is loaded. Shutdown cleans up a
+loaded runtime without loading an unused one.
+
+See [the benchmark report](bench/README.md) for measurements, limitations, and
+reproduction instructions.
+
 ## Installation
 
 ```sh
