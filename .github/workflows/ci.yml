@@ -23,6 +23,7 @@ jobs:
     needs: prepare
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         path: ${{ fromJson(needs.prepare.outputs.paths) }}
     steps:
@@ -37,4 +38,8 @@ jobs:
       - run: npm run lint --if-present
         working-directory: ${{ matrix.path }}
       - run: npm run typecheck --if-present
+        working-directory: ${{ matrix.path }}
+      - name: Run pi-cursor-agent tests
+        if: matrix.path == 'pi-cursor-agent'
+        run: npm test
         working-directory: ${{ matrix.path }}
