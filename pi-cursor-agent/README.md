@@ -48,6 +48,36 @@ The following models are available through the Cursor Agent provider. Canonical 
 | `composer-2-fast` | `composer-2-fast` | Composer 2 Fast (Cursor) |
 | `kimi-k2.5` | `kimi-k2.5` | Kimi K2.5 (Cursor) |
 
+## Startup and model caching
+
+Provider registration and the cached model list are available immediately. The
+Cursor execution runtime is loaded only on the first Cursor request, so sessions
+using other providers do not pay its import cost. The first Cursor request pays
+that deferred initialization cost; later requests reuse the loaded runtime.
+
+The model-discovery service is loaded and constructed only when the model cache
+needs refreshing (24-hour TTL, missing/empty cache, or an invalid timestamp). Concurrent
+refresh attempts share one service creation and fetch. Existing cached models
+remain available while a refresh is pending. When no models are cached, the first
+`/login` waits for model discovery (with a 15-second request timeout) before
+completing. Model-list refreshes such as `/models` and `/scoped-models` re-read the
+cache, so newly discovered models appear without restarting pi or running
+`pi update --models`. A discovery failure does not prevent credentials from being
+saved.
+
+Session/branch state is restored before the first Cursor request and refreshed on
+subsequent session/tree events once the runtime is loaded. Shutdown cleans up a
+loaded runtime without loading an unused one.
+
+See [the benchmark report](bench/README.md) for measurements, limitations, and
+reproduction instructions.
+
+Runtime errors and cancellation are reported as failures rather than normal
+completion. Saved branch checkpoints are validated before a request; a missing
+checkpoint blob produces a retryable error instead of silently using another
+branch. See [the E2E smoke guide](e2e/README.md) for isolated authenticated checks
+and the distinction between local test coverage and live Cursor validation.
+
 ## Installation
 
 ```sh

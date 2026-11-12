@@ -59,18 +59,18 @@ import {
   setLiveSession,
 } from "./agent-stream-hook";
 import { toCursorId } from "./model-mapping";
+import { waitForCursorRun } from "./session-lifecycle";
 import { type CursorStateStore, createOverlayState } from "./state";
 
 function createCheckpointHandler(
-  handler: (checkpoint: ConversationStateStructure) => void,
+  handler: (checkpoint: ConversationStateStructure) => Promise<void>,
 ): CheckpointHandler {
   return {
     handleCheckpoint(
       _ctx: unknown,
       checkpoint: ConversationStateStructure,
     ): Promise<void> {
-      handler(checkpoint);
-      return Promise.resolve();
+      return handler(checkpoint);
     },
   };
 }
@@ -343,6 +343,7 @@ export function streamCursorAgent(
   model: Model<Api>,
   context: Context,
   options?: SimpleStreamOptions,
+  isCurrent: () => boolean = () => true,
 ): AssistantMessageEventStream {
   const stream = createAssistantMessageEventStream();
 
@@ -367,8 +368,20 @@ export function streamCursorAgent(
       timestamp: Date.now(),
     };
     let session: LiveSession | undefined;
+    let removeAbortListener = () => {};
 
     try {
+      const requestCtx = getCtx();
+      const checkRequest = () => {
+        options?.signal?.throwIfAborted();
+        if (
+          !isCurrent() ||
+          (requestCtx && requestCtx.sessionManager.getSessionId() !== sessionId)
+        ) {
+          throw new Error("Cursor session changed before the request started");
+        }
+      };
+      checkRequest();
       session = getLiveSession(sessionId);
 
       if (!session) {
@@ -380,7 +393,8 @@ export function streamCursorAgent(
         }
 
         const agentStore = await ensureAgentStore(sessionId);
-        const cwd = getCtx()?.cwd ?? process.cwd();
+        checkRequest();
+        const cwd = requestCtx?.cwd ?? process.cwd();
         const requestContextTools = getContextTools(context);
 
         const channel = new LiveEventChannel(sessionId);
@@ -398,6 +412,7 @@ export function streamCursorAgent(
         };
 
         const piContext = await preparePiContext(context.systemPrompt ?? "");
+        checkRequest();
 
         const resources = new LocalResourceProvider({
           ctx: piToolCtx,
@@ -421,9 +436,15 @@ export function streamCursorAgent(
         agentStore.conversationStateStructure = conversationState;
 
         let lastFlushedRootBlobId: string | undefined;
-        const flushSessionState = async () => {
+        const flushSessionState = async (appendEntry = true) => {
           const snapshot = await persistAgentStore(sessionId);
           if (!snapshot || snapshot.latestRootBlobId === lastFlushedRootBlobId)
+            return;
+          if (
+            !appendEntry ||
+            getCtx()?.sessionManager.getSessionId() !== sessionId ||
+            getLiveSession(sessionId) !== session
+          )
             return;
           lastFlushedRootBlobId = snapshot.latestRootBlobId;
           pi.appendEntry(CURSOR_STATE_ENTRY_TYPE, snapshot);
@@ -468,9 +489,8 @@ export function streamCursorAgent(
           handleInteractionUpdate,
         );
         const checkpointHandler = createCheckpointHandler(
-          (checkpoint: ConversationStateStructure) => {
-            void agentStore.handleCheckpoint(null, checkpoint);
-          },
+          (checkpoint: ConversationStateStructure) =>
+            agentStore.handleCheckpoint(null, checkpoint),
         );
         checkpointHandler.getLatestCheckpoint = () =>
           agentStore.getConversationStateStructure();
@@ -483,11 +503,26 @@ export function streamCursorAgent(
           signal: sessionSignal,
         };
 
+        const onSessionAbort = () => {
+          const reason = sessionSignal.reason ?? new Error("Request cancelled");
+          channel.fail(reason);
+          rejectPendingForSession(sessionId, "Cursor request cancelled");
+          agentService.close();
+        };
+        sessionSignal.addEventListener("abort", onSessionAbort, { once: true });
+        if (sessionSignal.aborted) onSessionAbort();
         const cursorRunPromise = connectClient
           .run(initialRequest, runOptions)
           .then(() => channel.push({ kind: "cursor-done" }))
-          .catch(() => channel.push({ kind: "cursor-done" }))
-          .finally(() => channel.markDone());
+          .catch((error: unknown) => {
+            channel.fail(error);
+            rejectPendingForSession(sessionId, "Cursor run failed");
+          })
+          .finally(() => {
+            sessionSignal.removeEventListener("abort", onSessionAbort);
+            agentService.close();
+            channel.markDone();
+          });
 
         session = {
           channel,
@@ -507,6 +542,14 @@ export function streamCursorAgent(
         throw new Error(`Failed to initialize live session: ${sessionId}`);
       }
       const liveSession = session;
+      // A tool continuation can carry a different Pi signal. Bind every consumer
+      // to the same live run, not only the first streamSimple invocation.
+      const onAbort = () => liveSession.abort("Request cancelled");
+      options?.signal?.addEventListener("abort", onAbort, { once: true });
+      removeAbortListener = () =>
+        options?.signal?.removeEventListener("abort", onAbort);
+      if (options?.signal?.aborted) onAbort();
+      options?.signal?.throwIfAborted();
 
       const usageState = { sawTokenDelta: false };
       let firstTokenTimeCaptured = false;
@@ -528,6 +571,7 @@ export function streamCursorAgent(
         },
       );
 
+      checkRequest();
       output.duration = Date.now() - liveSession.startTime;
       if (liveSession.firstTokenTime) {
         output.ttft = liveSession.firstTokenTime - liveSession.startTime;
@@ -548,9 +592,8 @@ export function streamCursorAgent(
           timestamp: output.timestamp,
           blocks: serializeContentBlocks(output.content),
         });
-        try {
-          await session.flushSessionState();
-        } catch {}
+        await session.flushSessionState();
+        checkRequest();
 
         stream.push({
           type: "done",
@@ -564,14 +607,15 @@ export function streamCursorAgent(
           timestamp: output.timestamp,
           blocks: serializeContentBlocks(output.content),
         });
-        let flushed = false;
-        try {
+        if (getLiveSession(sessionId) === session) {
           await session.flushSessionState();
-          flushed = true;
-        } catch {}
-        deleteLiveSession(sessionId);
-        await session.cursorRunPromise.catch(() => {});
-        await evictAgentStore(sessionId, { persist: !flushed }).catch(() => {});
+          checkRequest();
+          // Do not evict a replacement session after asynchronous persistence.
+          if (getLiveSession(sessionId) === session) {
+            deleteLiveSession(sessionId);
+            await evictAgentStore(sessionId, { persist: false });
+          }
+        }
         stream.push({ type: "done", reason: "stop", message: output });
       }
       stream.end();
@@ -579,26 +623,44 @@ export function streamCursorAgent(
       output.stopReason = options?.signal?.aborted ? "aborted" : "error";
       output.errorMessage =
         error instanceof Error ? error.message : String(error);
-      let flushed = false;
-      try {
-        if (session) {
-          await session.flushSessionState();
-          flushed = true;
-          await session.cursorRunPromise.catch(() => {});
+      if (isCurrent() && (!session || getLiveSession(sessionId) === session)) {
+        session?.abort("Stream ended");
+        rejectPendingForSession(
+          sessionId,
+          `Stream error: ${output.errorMessage}`,
+        );
+        if (session) await waitForCursorRun(session.cursorRunPromise);
+        // A lifecycle handler may have taken ownership of cleanup while waiting.
+        if (
+          isCurrent() &&
+          (!session || getLiveSession(sessionId) === session)
+        ) {
+          let flushed = false;
+          try {
+            if (session) {
+              await session.flushSessionState();
+              flushed = true;
+            }
+          } catch {}
+          if (
+            isCurrent() &&
+            (!session || getLiveSession(sessionId) === session)
+          ) {
+            deleteLiveSession(sessionId);
+            await evictAgentStore(sessionId, { persist: !flushed }).catch(
+              () => {},
+            );
+          }
         }
-      } catch {}
-      deleteLiveSession(sessionId);
-      rejectPendingForSession(
-        sessionId,
-        `Stream error: ${output.errorMessage}`,
-      );
-      await evictAgentStore(sessionId, { persist: !flushed }).catch(() => {});
+      }
       stream.push({
         type: "error",
         reason: output.stopReason === "aborted" ? "aborted" : "error",
         error: { ...output },
       });
       stream.end();
+    } finally {
+      removeAbortListener();
     }
   })();
 

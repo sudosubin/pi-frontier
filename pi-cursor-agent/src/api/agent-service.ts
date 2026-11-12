@@ -3,7 +3,10 @@ import {
   createClient,
   type Interceptor,
 } from "@connectrpc/connect";
-import { createConnectTransport } from "@connectrpc/connect-node";
+import {
+  createConnectTransport,
+  Http2SessionManager,
+} from "@connectrpc/connect-node";
 import type {
   AgentClientMessage,
   AgentServerMessage,
@@ -30,6 +33,7 @@ function getAbortError(reason?: unknown): Error {
 export function wrapAbortSafeStream(
   stream: AsyncIterable<AgentServerMessage>,
   signal: AbortSignal,
+  onAbort: () => void = () => {},
 ): AsyncIterable<AgentServerMessage> {
   return {
     [Symbol.asyncIterator]() {
@@ -59,26 +63,36 @@ export function wrapAbortSafeStream(
           let cleanup = () => {};
           try {
             const aborted = new Promise<never>((_, reject) => {
-              const onAbort = () => reject(getAbortError(signal.reason));
+              const abort = () => {
+                try {
+                  onAbort();
+                } finally {
+                  reject(getAbortError(signal.reason));
+                }
+              };
 
               if (signal.aborted) {
-                onAbort();
+                abort();
                 return;
               }
 
-              signal.addEventListener("abort", onAbort, { once: true });
+              signal.addEventListener("abort", abort, { once: true });
               cleanup = () => {
-                signal.removeEventListener("abort", onAbort);
+                signal.removeEventListener("abort", abort);
               };
             });
 
+            // Do not start a transport read for an already cancelled request.
+            if (signal.aborted) return await aborted;
             const result = await Promise.race([iterator.next(), aborted]);
             if (result.done) {
               done = true;
             }
             return result;
           } catch (error) {
-            await closeIterator();
+            // Async-generator return() may queue behind a stalled next(). Never
+            // let it hide the original error or hold the cancellation hostage.
+            void closeIterator().catch(() => {});
             throw error;
           } finally {
             cleanup();
@@ -101,6 +115,7 @@ export function wrapAbortSafeStream(
 
 class AgentService {
   private readonly client: Client<typeof AgentServiceDef>;
+  private readonly sessionManager: Http2SessionManager;
 
   constructor(baseUrl: string, options: AgentServiceOptions) {
     const authInterceptor: Interceptor = (next) => async (req) => {
@@ -112,8 +127,10 @@ class AgentService {
       return next(req);
     };
 
+    this.sessionManager = new Http2SessionManager(baseUrl);
     const transport = createConnectTransport({
       baseUrl,
+      sessionManager: this.sessionManager,
       httpVersion: "2",
       interceptors: [authInterceptor],
     });
@@ -121,8 +138,13 @@ class AgentService {
     this.client = createClient(AgentServiceDef, transport);
   }
 
+  close(): void {
+    this.sessionManager.abort();
+  }
+
   get rpcClient(): AgentRpcClient {
     const client = this.client;
+    const close = () => this.close();
 
     return {
       run(
@@ -137,7 +159,7 @@ class AgentService {
           return response;
         }
 
-        return wrapAbortSafeStream(response, options.signal);
+        return wrapAbortSafeStream(response, options.signal, close);
       },
     };
   }

@@ -31,8 +31,9 @@
     "lint": "biome check",
     "format": "biome check --write",
     "typecheck": "tsc",
-    "test": "tsx --test $(find test -name '*.test.ts' -o -name '*.test.mts' -o -name '*.test.js' | sort)",
-    "proto:generate": "buf generate"
+    "test": "node --import tsx --test $(find test -name '*.test.ts' -o -name '*.test.mts' -o -name '*.test.js' | sort)",
+    "proto:generate": "buf generate",
+    "test:e2e": "node --import tsx e2e/smoke.ts"
   },
   "dependencies": {
     "@bufbuild/protobuf": "1.10.0",

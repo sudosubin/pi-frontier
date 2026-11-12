@@ -69,6 +69,12 @@ test("rpcClient strips transport signal and still aborts the response stream", a
 
   const service = Object.create(AgentService.prototype) as AgentService;
   Reflect.set(service as object, "client", client);
+  let closed = 0;
+  Reflect.set(service as object, "sessionManager", {
+    abort: () => {
+      closed++;
+    },
+  });
 
   const stream = service.rpcClient.run(
     {
@@ -88,5 +94,60 @@ test("rpcClient strips transport signal and still aborts the response stream", a
   });
 
   assert.deepEqual(seenOptions, { headers: { "x-test": "1" } });
+  assert.equal(closed, 1);
   assert.equal(returnSpy.called, true);
+});
+
+test(
+  "abort settles even when iterator return stalls or rejects",
+  { timeout: 1000 },
+  async () => {
+    for (const stalled of [true, false]) {
+      const controller = new AbortController();
+      let closed = 0;
+      const wrapped = wrapAbortSafeStream(
+        {
+          [Symbol.asyncIterator]() {
+            return {
+              next: () =>
+                new Promise<IteratorResult<AgentServerMessage>>(() => {}),
+              return: () =>
+                stalled
+                  ? new Promise<IteratorResult<AgentServerMessage>>(() => {})
+                  : Promise.reject(new Error("cleanup failed")),
+            };
+          },
+        },
+        controller.signal,
+        () => {
+          closed++;
+        },
+      );
+      const result = wrapped[Symbol.asyncIterator]().next();
+      controller.abort(new Error("cancelled"));
+      await assert.rejects(result, /cancelled/);
+      assert.equal(closed, 1);
+    }
+  },
+);
+
+test("pre-aborted streams never start an underlying read", async () => {
+  const controller = new AbortController();
+  controller.abort();
+  let reads = 0;
+  const stream = wrapAbortSafeStream(
+    {
+      [Symbol.asyncIterator]() {
+        return {
+          async next() {
+            reads++;
+            return { done: true, value: undefined };
+          },
+        };
+      },
+    },
+    controller.signal,
+  );
+  await assert.rejects(stream[Symbol.asyncIterator]().next(), /abort/i);
+  assert.equal(reads, 0);
 });
