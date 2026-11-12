@@ -16,6 +16,7 @@ export class LiveEventChannel {
   private events: ChannelEvent[] = [];
   private cursor = 0;
   private done = false;
+  private failure: Error | undefined;
   private waiters: Array<() => void> = [];
 
   constructor(sessionId: string) {
@@ -23,6 +24,7 @@ export class LiveEventChannel {
   }
 
   push(event: ChannelEvent): void {
+    if (this.done) return;
     this.events.push(event);
     this.notifyWaiters();
   }
@@ -32,12 +34,21 @@ export class LiveEventChannel {
     this.notifyWaiters();
   }
 
+  fail(error: unknown): void {
+    this.failure ??= error instanceof Error ? error : new Error(String(error));
+    this.events = [];
+    this.cursor = 0;
+    this.markDone();
+  }
+
   async next(): Promise<ChannelEvent | null> {
-    while (this.cursor >= this.events.length) {
+    while (true) {
+      if (this.failure) throw this.failure;
+      if (this.cursor < this.events.length)
+        return this.events[this.cursor++] ?? null;
       if (this.done) return null;
       await new Promise<void>((r) => this.waiters.push(r));
     }
-    return this.events[this.cursor++] || null;
   }
 
   private notifyWaiters(): void {
@@ -50,7 +61,7 @@ export class LiveEventChannel {
 export interface LiveSession {
   channel: LiveEventChannel;
   cursorRunPromise: Promise<void>;
-  flushSessionState: () => Promise<void>;
+  flushSessionState: (appendEntry?: boolean) => Promise<void>;
   abort: (reason?: string) => void;
   startTime: number;
   firstTokenTime?: number;

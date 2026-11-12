@@ -112,6 +112,18 @@ export function createLazyCursorRuntime(
           if (disposed || version !== branchVersion) {
             throw new Error("Cursor session changed during initialization");
           }
+          const selectedId = (
+            pendingCtx ?? getCtx()
+          )?.sessionManager.getSessionId();
+          if (
+            selectedId &&
+            options?.sessionId &&
+            selectedId !== options.sessionId
+          ) {
+            throw new Error(
+              "Cursor request does not match the selected session",
+            );
+          }
           for await (const event of runtime.stream(model, context, options)) {
             stream.push(event);
           }

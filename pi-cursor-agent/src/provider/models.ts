@@ -20,6 +20,7 @@ interface ModelService {
 }
 
 let updateInFlight: Promise<void> | null = null;
+let updateCredential: string | undefined;
 
 const toPiModel = (
   id: string,
@@ -93,10 +94,14 @@ export const updateCachedPiModels = async (ai: ModelService) => {
 
 export const updateCachedPiModelsIfStale = async (
   createAi: () => ModelService | Promise<ModelService>,
-) => {
+  credential?: string,
+): Promise<void> => {
   if (updateInFlight) {
-    await updateInFlight;
-    return;
+    if (updateCredential === credential) return updateInFlight;
+    // A refresh started with an old token must not consume the only discovery
+    // attempt made with newly refreshed credentials. Retry if its cache is stale.
+    await updateInFlight.catch(() => {});
+    return updateCachedPiModelsIfStale(createAi, credential);
   }
 
   if (!isCacheStale(readCache())) {
@@ -105,11 +110,13 @@ export const updateCachedPiModelsIfStale = async (
 
   // Check freshness before loading the transport/protobuf graph. The shared
   // promise covers service creation too, not just the subsequent network call.
+  updateCredential = credential;
   updateInFlight = Promise.resolve()
     .then(createAi)
     .then(updateCachedPiModels)
     .finally(() => {
       updateInFlight = null;
+      updateCredential = undefined;
     });
 
   await updateInFlight;

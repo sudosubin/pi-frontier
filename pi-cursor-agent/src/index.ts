@@ -34,9 +34,10 @@ const createAiService = async (accessToken: string) => {
 };
 
 const updateCachedModelsInBackground = (accessToken: string) => {
-  void updateCachedPiModelsIfStale(() => createAiService(accessToken)).catch(
-    () => {},
-  ); // ignore
+  void updateCachedPiModelsIfStale(
+    () => createAiService(accessToken),
+    accessToken,
+  ).catch(() => {}); // ignore
 };
 
 const updateCachedModelsFromContextInBackground = (ctx: ExtensionContext) => {
@@ -47,7 +48,10 @@ const updateCachedModelsFromContextInBackground = (ctx: ExtensionContext) => {
       return;
     }
 
-    await updateCachedPiModelsIfStale(() => createAiService(accessToken));
+    await updateCachedPiModelsIfStale(
+      () => createAiService(accessToken),
+      accessToken,
+    );
   })().catch(() => {}); // ignore
 };
 
@@ -59,8 +63,9 @@ const login = async (
     // Pi refreshes its registry after login. Populate the first catalog before
     // returning so that refresh cannot race an empty cache.
     callbacks.onProgress?.("Loading Cursor models...");
-    await updateCachedPiModelsIfStale(() =>
-      createAiService(credentials.access),
+    await updateCachedPiModelsIfStale(
+      () => createAiService(credentials.access),
+      credentials.access,
     ).catch(() => {}); // Model discovery failure must not discard valid credentials.
   } else {
     updateCachedModelsInBackground(credentials.access);

@@ -18,27 +18,40 @@ export function createCursorRuntime(
   state: CursorStateStore,
 ): CursorRuntime {
   let currentSessionId: string | null = null;
+  let generation = 0;
 
   return {
     async refreshBranchState(ctx) {
+      generation++;
       const sessionId = ctx.sessionManager.getSessionId();
       const previousSessionId = currentSessionId;
       currentSessionId = sessionId;
-      if (previousSessionId && previousSessionId !== sessionId) {
+      if (previousSessionId) {
         await terminateSession(previousSessionId, "Session ended");
       }
       state.resetFromContext(ctx);
-      try {
-        await restoreAgentStoreFromBranch(
-          sessionId,
-          ctx.sessionManager.getBranch(),
-        );
-      } catch {}
+      // Restoration failures must reach the request and remain retryable in the
+      // lazy facade; never silently run with another branch's checkpoint.
+      await restoreAgentStoreFromBranch(
+        sessionId,
+        ctx.sessionManager.getBranch(),
+      );
       retainOnlyActiveSessionMemory(sessionId);
     },
-    stream: (model, context, options) =>
-      streamCursorAgent(pi, getCtx, state, model, context, options),
+    stream: (model, context, options) => {
+      const requestGeneration = generation;
+      return streamCursorAgent(
+        pi,
+        getCtx,
+        state,
+        model,
+        context,
+        options,
+        () => requestGeneration === generation,
+      );
+    },
     async shutdown() {
+      generation++;
       if (currentSessionId) {
         await terminateSession(currentSessionId, "Session ended");
         currentSessionId = null;

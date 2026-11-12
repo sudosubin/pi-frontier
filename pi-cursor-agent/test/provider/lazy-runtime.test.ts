@@ -300,3 +300,14 @@ test("tool-use boundaries and continuation results are forwarded without another
   assert.equal((await s.request().result()).stopReason, "stop");
   assert.deepEqual(s.restored, ["a"]);
 });
+
+test("a request for a different session never reaches the restored runtime", async () => {
+  const s = setup();
+  await s.lazy.refreshBranchState(ctx("selected"));
+  const result = await s.lazy
+    .stream(model, { messages: [] }, { sessionId: "other" })
+    .result();
+  assert.equal(result.stopReason, "error");
+  assert.match(result.errorMessage ?? "", /selected session/);
+  assert.equal(s.counts().streams, 0);
+});

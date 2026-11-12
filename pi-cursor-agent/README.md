@@ -72,6 +72,12 @@ loaded runtime without loading an unused one.
 See [the benchmark report](bench/README.md) for measurements, limitations, and
 reproduction instructions.
 
+Runtime errors and cancellation are reported as failures rather than normal
+completion. Saved branch checkpoints are validated before a request; a missing
+checkpoint blob produces a retryable error instead of silently using another
+branch. See [the E2E smoke guide](e2e/README.md) for isolated authenticated checks
+and the distinction between local test coverage and live Cursor validation.
+
 ## Installation
 
 ```sh

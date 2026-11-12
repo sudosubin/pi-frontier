@@ -135,3 +135,23 @@ test("failed fetch preserves the cache and permits a retry", async () => {
   await updateCachedPiModelsIfStale(() => ai);
   assert.equal(ai.calls(), 1);
 });
+
+test("new credentials retry discovery after the old token's in-flight failure", async () => {
+  cache();
+  let rejectOld!: (reason: Error) => void;
+  const pending = new Promise<never>((_, reject) => {
+    rejectOld = reject;
+  });
+  const old = updateCachedPiModelsIfStale(
+    () => ({ getUsableModels: () => pending }),
+    "old",
+  );
+  const failed = assert.rejects(old, /expired/);
+  const ai = service();
+  const fresh = updateCachedPiModelsIfStale(() => ai, "new");
+  rejectOld(new Error("expired"));
+  await failed;
+  await fresh;
+  assert.equal(ai.calls(), 1);
+  assert.equal(getCachedPiModels()[0]?.id, "composer-2");
+});

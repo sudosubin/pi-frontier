@@ -1,7 +1,6 @@
 import type { SessionEntry } from "@mariozechner/pi-coding-agent";
 import { ConversationStateStructure } from "../__generated__/agent/v1/agent_pb";
 import {
-  applySnapshotToStore,
   deleteAgentStore as deleteStore,
   ensureAgentStore as ensureStore,
   persistAgentStore as persistStore,
@@ -98,27 +97,42 @@ export const restoreAgentStoreFromBranch = async (
   entries: SessionEntry[],
 ): Promise<void> => {
   const snapshot = findSnapshot(entries);
+  const storeEntry = await ensureStore(PI_CURSOR_AGENT_CACHE_DIR, sessionId);
   if (!snapshot) {
+    // A branch before its first Cursor turn must not inherit the latest disk
+    // checkpoint from a different branch of the same Pi session.
+    storeEntry.jsonStore.metadata.agentId = crypto.randomUUID();
+    storeEntry.jsonStore.metadata.latestRootBlobId = new Uint8Array();
+    storeEntry.store.conversationStateStructure =
+      new ConversationStateStructure();
     return;
   }
-
-  const storeEntry = await ensureStore(PI_CURSOR_AGENT_CACHE_DIR, sessionId);
+  if (
+    snapshot.latestRootBlobId &&
+    !/^(?:[0-9a-fA-F]{2})+$/.test(snapshot.latestRootBlobId)
+  ) {
+    throw new Error("Invalid Cursor checkpoint blob id");
+  }
   const rootBlobId = snapshot.latestRootBlobId
     ? fromHex(snapshot.latestRootBlobId)
     : new Uint8Array();
 
+  // Decode before mutating metadata. The vendor resetFromDb intentionally
+  // tolerates missing/corrupt blobs, which is unsafe for explicit branch restore.
+  let restored = new ConversationStateStructure();
   if (rootBlobId.length > 0) {
-    await applySnapshotToStore(storeEntry, snapshot.agentId, rootBlobId);
-    return;
+    const bytes = await storeEntry.jsonStore.getBlob(null, rootBlobId);
+    if (!bytes)
+      throw new Error(
+        "Cursor checkpoint blob is missing; restore the session cache before retrying",
+      );
+    restored = ConversationStateStructure.fromBinary(bytes);
+  } else if (snapshot.conversationState) {
+    restored = ConversationStateStructure.fromBinary(
+      Buffer.from(snapshot.conversationState, "base64"),
+    );
   }
-
-  if (snapshot.conversationState) {
-    storeEntry.jsonStore.metadata.agentId = snapshot.agentId;
-    try {
-      storeEntry.store.conversationStateStructure =
-        ConversationStateStructure.fromBinary(
-          Buffer.from(snapshot.conversationState, "base64"),
-        );
-    } catch {}
-  }
+  storeEntry.jsonStore.metadata.agentId = snapshot.agentId;
+  storeEntry.jsonStore.metadata.latestRootBlobId = rootBlobId;
+  storeEntry.store.conversationStateStructure = restored;
 };
