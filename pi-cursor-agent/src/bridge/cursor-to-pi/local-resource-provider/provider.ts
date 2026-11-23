@@ -83,12 +83,18 @@ export class LocalResourceProvider extends RegistryResourceAccessor {
     this.register(grepResource, new LocalGrepExecutor(ctx));
     this.register(lsResource, new LocalLsExecutor(ctx));
 
+    const declaredToolNames = new Set(
+      requestContextTools
+        .map((tool) => tool.toolName || tool.name)
+        .filter((name): name is string => Boolean(name)),
+    );
+
     // stubs (not implemented)
     this.register(backgroundShellResource, new StubBackgroundShellExecutor());
     this.register(writeShellStdinResource, new StubWriteShellStdinExecutor());
     this.register(fetchResource, new StubFetchExecutor());
     this.register(diagnosticsResource, new StubDiagnosticsExecutor());
-    this.register(mcpResource, new LocalMcpExecutor(ctx));
+    this.register(mcpResource, new LocalMcpExecutor(ctx, declaredToolNames));
     this.register(listMcpResourcesResource, new StubListMcpResourcesExecutor());
     this.register(readMcpResourceResource, new StubReadMcpResourceExecutor());
     this.register(recordScreenResource, new StubRecordScreenExecutor());

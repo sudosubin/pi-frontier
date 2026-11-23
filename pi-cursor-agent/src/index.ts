@@ -102,12 +102,20 @@ export default (pi: ExtensionAPI) => {
     retainOnlyActiveSessionMemory(sessionId);
   };
 
-  pi.on("before_agent_start", async (_, ctx) => {
+  const ensureBranchStateSynced = async (ctx: ExtensionContext) => {
     lastCtx = ctx;
+    const sessionId = ctx.sessionManager.getSessionId();
+    if (currentSessionId !== sessionId) {
+      await refreshBranchState(ctx);
+    }
+  };
+
+  pi.on("before_agent_start", async (_, ctx) => {
+    await ensureBranchStateSynced(ctx);
   });
 
   pi.on("agent_start", async (_, ctx) => {
-    lastCtx = ctx;
+    await ensureBranchStateSynced(ctx);
   });
 
   pi.on("model_select", async (event, ctx) => {

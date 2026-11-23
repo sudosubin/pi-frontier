@@ -20,11 +20,15 @@ function parseFrontmatter(content: string): {
   const end = s.indexOf("\n---", 3);
   if (end === -1) return { frontmatter: {}, body: s };
 
-  const parsed = parseYaml(s.slice(4, end));
-  return {
-    frontmatter: (parsed ?? {}) as Record<string, unknown>,
-    body: s.slice(end + 4).trim(),
-  };
+  try {
+    const parsed = parseYaml(s.slice(4, end));
+    return {
+      frontmatter: (parsed ?? {}) as Record<string, unknown>,
+      body: s.slice(end + 4).trim(),
+    };
+  } catch {
+    return { frontmatter: {}, body: s.slice(end + 4).trim() };
+  }
 }
 
 function globalRule(path: string, content: string): CursorRule {
@@ -46,20 +50,29 @@ function agentFetchedRuleType(description: string): CursorRuleType {
   });
 }
 
+function formatSkillDescription(skill: PiSkillRef): string {
+  const prefix = `${skill.name}:`;
+  if (skill.description.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return skill.description;
+  }
+  return `${skill.name}: ${skill.description}`;
+}
+
 async function agentFetchedRule(skill: PiSkillRef): Promise<CursorRule> {
+  const description = formatSkillDescription(skill);
   try {
     const raw = await readFile(skill.location, "utf-8");
     const { body } = parseFrontmatter(raw);
     return new CursorRule({
       fullPath: skill.location,
       content: body || raw,
-      type: agentFetchedRuleType(skill.description),
+      type: agentFetchedRuleType(description),
     });
   } catch {
     return new CursorRule({
       fullPath: skill.location,
       content: skill.description,
-      type: agentFetchedRuleType(skill.description),
+      type: agentFetchedRuleType(description),
     });
   }
 }
@@ -67,7 +80,12 @@ async function agentFetchedRule(skill: PiSkillRef): Promise<CursorRule> {
 export async function buildCursorRules(
   parsed: ParsedPiContext,
 ): Promise<CursorRule[]> {
-  const globals = parsed.contextFiles.map((f) => globalRule(f.path, f.content));
+  const instructions = (parsed.instructionRules ?? []).map((rule) =>
+    globalRule(rule.path, rule.content),
+  );
+  const projectFiles = parsed.contextFiles.map((f) =>
+    globalRule(f.path, f.content),
+  );
   const skills = await Promise.all(parsed.skills.map(agentFetchedRule));
-  return [...globals, ...skills];
+  return [...instructions, ...projectFiles, ...skills];
 }

@@ -284,7 +284,7 @@ function buildRgCommand(args: GrepArgs): string {
     parts.push("-m", String(args.headLimit));
   if (args.outputMode === "files_with_matches") parts.push("-l");
   else if (args.outputMode === "count") parts.push("-c", "--with-filename");
-  parts.push("--color=never", "--no-config", "--hidden");
+  parts.push("--color=never", "--no-config", "--hidden", "--glob", "'!.git'");
   parts.push("--", shellQuote(args.pattern));
   parts.push(args.path ? shellQuote(args.path) : ".");
   return parts.join(" ");

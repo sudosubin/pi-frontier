@@ -16,7 +16,18 @@ import {
   decodeToolCallId,
   type PiToolContext,
 } from "../local-resource-provider/types";
-import { requestToolExecution } from "../tool-bridge";
+import { requestToolExecution, shellQuote } from "../tool-bridge";
+
+export function buildScopedShellCommand(
+  command: string,
+  workingDirectory: string | undefined,
+  defaultCwd: string,
+): string {
+  if (!workingDirectory || workingDirectory === defaultCwd) {
+    return command;
+  }
+  return `cd ${shellQuote(workingDirectory)} && {\n${command}\n}`;
+}
 
 export function buildShellResultFromToolResult(
   args: { command: string; workingDirectory: string },
@@ -124,6 +135,11 @@ export class LocalShellExecutor implements Executor<ShellArgs, ShellResult> {
 
     const timeoutSeconds =
       args.timeout && args.timeout > 0 ? args.timeout : undefined;
+    const command = buildScopedShellCommand(
+      args.command,
+      args.workingDirectory,
+      this.ctx.cwd,
+    );
 
     const piResult = await requestToolExecution(
       this.ctx.getChannel?.() ?? null,
@@ -132,7 +148,7 @@ export class LocalShellExecutor implements Executor<ShellArgs, ShellResult> {
         cursorExecType: "shell",
         piToolName: "bash",
         piToolArgs: {
-          command: args.command,
+          command,
           ...(timeoutSeconds != null ? { timeout: timeoutSeconds } : {}),
         },
       },

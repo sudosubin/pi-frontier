@@ -16,7 +16,23 @@ interface AgentStoreSnapshot {
   agentId: string;
   latestRootBlobId: string;
   conversationState?: string;
+  lastAssistantTimestamp?: number;
 }
+
+const lastAssistantTimestampBySession = new Map<string, number>();
+
+export const setLastAssistantTimestamp = (
+  sessionId: string,
+  timestamp: number,
+): void => {
+  lastAssistantTimestampBySession.set(sessionId, timestamp);
+};
+
+export const getLastAssistantTimestamp = (
+  sessionId: string,
+): number | undefined => {
+  return lastAssistantTimestampBySession.get(sessionId);
+};
 
 const isAgentStoreSnapshot = (value: unknown): value is AgentStoreSnapshot => {
   if (typeof value !== "object" || value === null) {
@@ -64,10 +80,12 @@ export const persistAgentStore = async (
     store,
     jsonStore: { metadata },
   } = entry;
+  const lastAssistantTimestamp = lastAssistantTimestampBySession.get(sessionId);
   const snapshot: AgentStoreSnapshot = {
     version: 1,
     agentId: metadata.agentId,
     latestRootBlobId: toHex(metadata.latestRootBlobId),
+    ...(lastAssistantTimestamp !== undefined ? { lastAssistantTimestamp } : {}),
   };
 
   try {
@@ -99,7 +117,17 @@ export const restoreAgentStoreFromBranch = async (
 ): Promise<void> => {
   const snapshot = findSnapshot(entries);
   if (!snapshot) {
+    lastAssistantTimestampBySession.delete(sessionId);
     return;
+  }
+
+  if (typeof snapshot.lastAssistantTimestamp === "number") {
+    lastAssistantTimestampBySession.set(
+      sessionId,
+      snapshot.lastAssistantTimestamp,
+    );
+  } else {
+    lastAssistantTimestampBySession.delete(sessionId);
   }
 
   const storeEntry = await ensureStore(PI_CURSOR_AGENT_CACHE_DIR, sessionId);

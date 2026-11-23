@@ -33,6 +33,7 @@ import {
   buildRunRequest,
   getContextTools,
 } from "../bridge/pi-to-cursor/request-builder";
+import { extractPiSystemState } from "../bridge/pi-to-cursor/transcript";
 import { CURSOR_API_URL, CURSOR_CLIENT_VERSION } from "../lib/env";
 import {
   AgentConnectClient,
@@ -48,7 +49,9 @@ import {
   CURSOR_STATE_ENTRY_TYPE,
   ensureAgentStore,
   evictAgentStore,
+  getLastAssistantTimestamp,
   persistAgentStore,
+  setLastAssistantTimestamp,
 } from "./agent-store";
 import {
   type ContentEvent,
@@ -273,6 +276,11 @@ async function consumeUntilBoundary(
         break;
       }
 
+      case "cursor-error": {
+        finalizeAllContent(contentState, output, stream);
+        throw event.error;
+      }
+
       case "cursor-done": {
         finalizeAllContent(contentState, output, stream);
         return { reason: "stop", tools: [] };
@@ -397,7 +405,11 @@ export function streamCursorAgent(
           getChannel: () => channel,
         };
 
-        const piContext = await preparePiContext(context.systemPrompt ?? "");
+        const piSystemState = extractPiSystemState(context);
+        const piContext = await preparePiContext(
+          piSystemState,
+          requestContextTools,
+        );
 
         const resources = new LocalResourceProvider({
           ctx: piToolCtx,
@@ -408,7 +420,9 @@ export function streamCursorAgent(
         const blobStore = agentStore.getBlobStore();
         const cursorModelId = toCursorId(model.id, options?.reasoning);
         const overlayState = createOverlayState(state);
-        const { initialRequest, conversationState } = buildRunRequest({
+        const expectedLastAssistantTimestamp =
+          getLastAssistantTimestamp(sessionId);
+        const { initialRequest, conversationState } = await buildRunRequest({
           model: { ...model, id: cursorModelId },
           context,
           conversationId: agentStore.getId(),
@@ -417,15 +431,29 @@ export function streamCursorAgent(
           mcpToolDefinitions: requestContextTools,
           state: overlayState,
           systemPromptOverride: piContext.cleanedPrompt,
+          ...(expectedLastAssistantTimestamp !== undefined
+            ? { expectedLastAssistantTimestamp }
+            : {}),
         });
         agentStore.conversationStateStructure = conversationState;
 
         let lastFlushedRootBlobId: string | undefined;
-        const flushSessionState = async () => {
+        let lastFlushedAssistantTimestamp: number | undefined;
+        const flushSessionState = async (lastAssistantTimestamp?: number) => {
+          await pendingCheckpoint;
+          if (lastAssistantTimestamp !== undefined) {
+            setLastAssistantTimestamp(sessionId, lastAssistantTimestamp);
+          }
           const snapshot = await persistAgentStore(sessionId);
-          if (!snapshot || snapshot.latestRootBlobId === lastFlushedRootBlobId)
+          if (
+            !snapshot ||
+            (snapshot.latestRootBlobId === lastFlushedRootBlobId &&
+              snapshot.lastAssistantTimestamp === lastFlushedAssistantTimestamp)
+          ) {
             return;
+          }
           lastFlushedRootBlobId = snapshot.latestRootBlobId;
+          lastFlushedAssistantTimestamp = snapshot.lastAssistantTimestamp;
           pi.appendEntry(CURSOR_STATE_ENTRY_TYPE, snapshot);
         };
 
@@ -467,9 +495,12 @@ export function streamCursorAgent(
         const interactionListener = createInteractionListenerAdapter(
           handleInteractionUpdate,
         );
+        let pendingCheckpoint: Promise<void> = Promise.resolve();
         const checkpointHandler = createCheckpointHandler(
           (checkpoint: ConversationStateStructure) => {
-            void agentStore.handleCheckpoint(null, checkpoint);
+            pendingCheckpoint = pendingCheckpoint
+              .then(() => agentStore.handleCheckpoint(null, checkpoint))
+              .catch(() => {});
           },
         );
         checkpointHandler.getLatestCheckpoint = () =>
@@ -486,7 +517,17 @@ export function streamCursorAgent(
         const cursorRunPromise = connectClient
           .run(initialRequest, runOptions)
           .then(() => channel.push({ kind: "cursor-done" }))
-          .catch(() => channel.push({ kind: "cursor-done" }))
+          .catch((error: unknown) => {
+            if (sessionSignal.aborted) {
+              channel.push({ kind: "cursor-done" });
+            } else {
+              channel.push({
+                kind: "cursor-error",
+                error:
+                  error instanceof Error ? error : new Error(String(error)),
+              });
+            }
+          })
           .finally(() => channel.markDone());
 
         session = {
@@ -549,7 +590,7 @@ export function streamCursorAgent(
           blocks: serializeContentBlocks(output.content),
         });
         try {
-          await session.flushSessionState();
+          await session.flushSessionState(output.timestamp);
         } catch {}
 
         stream.push({
@@ -564,13 +605,13 @@ export function streamCursorAgent(
           timestamp: output.timestamp,
           blocks: serializeContentBlocks(output.content),
         });
-        let flushed = false;
-        try {
-          await session.flushSessionState();
-          flushed = true;
-        } catch {}
         deleteLiveSession(sessionId);
         await session.cursorRunPromise.catch(() => {});
+        let flushed = false;
+        try {
+          await session.flushSessionState(output.timestamp);
+          flushed = true;
+        } catch {}
         await evictAgentStore(sessionId, { persist: !flushed }).catch(() => {});
         stream.push({ type: "done", reason: "stop", message: output });
       }

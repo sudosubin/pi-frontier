@@ -1,8 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { Context, Message, Model } from "@mariozechner/pi-ai";
-import { ConversationStateStructure } from "../../../src/__generated__/agent/v1/agent_pb.js";
-import { buildRunRequest } from "../../../src/bridge/pi-to-cursor/request-builder.js";
+import {
+  AgentConversationTurnStructure,
+  ConversationStateStructure,
+  ConversationTurnStructure,
+  UserMessage,
+} from "../../../src/__generated__/agent/v1/agent_pb.js";
+import {
+  buildMcpToolDefinitions,
+  buildRunRequest,
+  canReuseConversationState,
+} from "../../../src/bridge/pi-to-cursor/request-builder.js";
 import { createStateStore } from "../../../src/provider/state.js";
 import {
   getBlobId,
@@ -28,6 +37,7 @@ function createParams(options?: {
   messages?: Message[];
   conversationState?: ConversationStateStructure;
   state?: ReturnType<typeof createStateStore>;
+  expectedLastAssistantTimestamp?: number;
 }) {
   const blobStore = new InMemoryBlobStore();
   const model = {
@@ -61,17 +71,47 @@ function createParams(options?: {
       conversationState: options?.conversationState,
       mcpToolDefinitions: [],
       ...(options?.state ? { state: options.state } : {}),
+      ...(options?.expectedLastAssistantTimestamp !== undefined
+        ? {
+            expectedLastAssistantTimestamp:
+              options.expectedLastAssistantTimestamp,
+          }
+        : {}),
     },
   };
 }
 
-test("preserves cached conversation state", () => {
-  const bytes = new TextEncoder().encode(
+async function seedValidCachedState(
+  blobStore: InMemoryBlobStore,
+): Promise<ConversationStateStructure> {
+  const sysBytes = new TextEncoder().encode(
     JSON.stringify({ role: "system", content: "You are a helpful assistant." }),
   );
-  const cached = new ConversationStateStructure({
-    rootPromptMessagesJson: [getBlobId(bytes)],
-    turns: [new Uint8Array([1, 2, 3])],
+  const sysId = new Uint8Array(Array.from(getBlobId(sysBytes)));
+  await blobStore.setBlob(null, sysId, sysBytes);
+
+  const userBytes = new UserMessage({
+    text: "Remember BANANA42.",
+    messageId: "m1",
+  }).toBinary();
+  const userId = new Uint8Array(Array.from(getBlobId(userBytes)));
+  await blobStore.setBlob(null, userId, userBytes);
+
+  const turnBytes = new ConversationTurnStructure({
+    turn: {
+      case: "agentConversationTurn",
+      value: new AgentConversationTurnStructure({
+        userMessage: userId,
+        steps: [],
+      }),
+    },
+  }).toBinary();
+  const turnId = new Uint8Array(Array.from(getBlobId(turnBytes)));
+  await blobStore.setBlob(null, turnId, turnBytes);
+
+  return new ConversationStateStructure({
+    rootPromptMessagesJson: [sysId],
+    turns: [turnId],
     todos: [],
     pendingToolCalls: [],
     previousWorkspaceUris: [],
@@ -83,22 +123,86 @@ test("preserves cached conversation state", () => {
     selfSummaryCount: 0,
     readPaths: [],
   });
+}
 
-  const { params } = createParams({ conversationState: cached });
-  const result = buildRunRequest(params);
-  assert.equal(result.conversationState, cached);
-});
-
-test("seeds turns from prior messages when no cached state", () => {
-  const { params, blobStore } = createParams();
-  const result = buildRunRequest(params);
-
-  assert.equal(result.conversationState.turns.length, 1);
-  assert.ok(blobStore.store.size > 0);
+function getSentUserText(
+  result: Awaited<ReturnType<typeof buildRunRequest>>,
+): string {
   assert.equal(result.initialRequest.message.case, "runRequest");
+  const action = result.initialRequest.message.value.action?.action;
+  assert.equal(action?.case, "userMessageAction");
+  return action.value.userMessage?.text ?? "";
+}
+
+test("preserves cached conversation state when blobs exist and branch matches", async () => {
+  const { params, blobStore } = createParams({
+    expectedLastAssistantTimestamp: 2,
+  });
+  const cached = await seedValidCachedState(blobStore);
+  params.conversationState = cached;
+
+  const result = await buildRunRequest(params);
+  assert.equal(result.conversationState, cached);
+  assert.equal(getSentUserText(result), "What code word?");
 });
 
-test("reconstruction includes thinking and tool call blocks", () => {
+test("reconstructs prior history into cold request when cached blobs are missing (fork scenario)", async () => {
+  const sourceStore = new InMemoryBlobStore();
+  const cached = await seedValidCachedState(sourceStore);
+
+  // Forked session has an empty blob store even though snapshot carried cached state.
+  const { params } = createParams({
+    conversationState: cached,
+    expectedLastAssistantTimestamp: 2,
+  });
+
+  const result = await buildRunRequest(params);
+  assert.notEqual(result.conversationState, cached);
+  assert.equal(result.conversationState.rootPromptMessagesJson.length, 1);
+  assert.equal(result.conversationState.turns.length, 0);
+
+  const text = getSentUserText(result);
+  assert.ok(text.includes("<prior_conversation_history>"));
+  assert.ok(text.includes("Remember BANANA42."));
+  assert.ok(text.includes("OK"));
+  assert.ok(text.includes("What code word?"));
+});
+
+test("reconstructs prior history when branch diverged or non-cursor provider ran", async () => {
+  const { params, blobStore } = createParams({
+    messages: [
+      { role: "user", content: "Turn 1", timestamp: 1 },
+      {
+        role: "assistant",
+        content: [{ type: "text", text: "Anthropic reply" }],
+        timestamp: 2,
+        ...ASSISTANT_DEFAULTS,
+        provider: "anthropic",
+      },
+      { role: "user", content: "Turn 2", timestamp: 3 },
+    ],
+    expectedLastAssistantTimestamp: 2,
+  });
+  const cached = await seedValidCachedState(blobStore);
+  params.conversationState = cached;
+
+  assert.equal(
+    await canReuseConversationState(
+      cached,
+      blobStore,
+      params.context.messages,
+      true,
+      2,
+    ),
+    false,
+  );
+
+  const result = await buildRunRequest(params);
+  assert.notEqual(result.conversationState, cached);
+  assert.ok(getSentUserText(result).includes("Anthropic reply"));
+});
+
+test("reconstruction includes tool calls and stored exec-type labels", async () => {
   const state = createStateStore(() => {});
   state.rememberAssistantContent({
     timestamp: 2,
@@ -121,7 +225,7 @@ test("reconstruction includes thinking and tool call blocks", () => {
     assistantTimestamp: 2,
   });
 
-  const { params, blobStore } = createParams({
+  const { params } = createParams({
     messages: [
       { role: "user", content: "Read a.ts", timestamp: 1 },
       {
@@ -143,59 +247,31 @@ test("reconstruction includes thinking and tool call blocks", () => {
     state,
   });
 
-  const result = buildRunRequest(params);
-  assert.equal(result.conversationState.turns.length, 1);
-  assert.ok(blobStore.store.size >= 4);
+  const result = await buildRunRequest(params);
+  const text = getSentUserText(result);
+  assert.ok(text.includes('[Tool: read {"path":"a.ts"}]'));
+  assert.ok(text.includes("[read result]"));
+  assert.ok(text.includes("const x = 1;"));
 });
 
-test("tool result uses exec type label from stored meta", () => {
-  const state = createStateStore(() => {});
-  state.rememberToolCallMeta({
-    toolCallId: "tc-sh",
-    cursorExecType: "shell",
-    piToolName: "bash",
-    piToolArgs: { command: "echo hi" },
-    assistantTimestamp: 2,
-  });
-
-  const { params } = createParams({
-    messages: [
-      { role: "user", content: "Run echo", timestamp: 1 },
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "Running..." }],
-        timestamp: 2,
-        ...ASSISTANT_DEFAULTS,
+test("sanitizes TypeBox schemas with symbols and undefined values when building MCP tools", () => {
+  const kindSym = Symbol("TypeBox.Kind");
+  const defs = buildMcpToolDefinitions([
+    {
+      name: "codemode",
+      description: "Run JS",
+      parameters: {
+        [kindSym]: "Object",
+        type: "object",
+        properties: {
+          code: { type: "string", description: undefined },
+        },
+        required: ["code"],
       },
-      {
-        role: "toolResult",
-        toolCallId: "tc-sh",
-        toolName: "bash",
-        content: [{ type: "text", text: "hi" }],
-        isError: false,
-        timestamp: 3,
-      },
-      { role: "user", content: "Done?", timestamp: 4 },
-    ],
-    state,
-  });
+    } as unknown as NonNullable<Context["tools"]>[number],
+  ]);
 
-  assert.equal(buildRunRequest(params).conversationState.turns.length, 1);
-});
-
-test("reconstruction works without state", () => {
-  const { params } = createParams({
-    messages: [
-      { role: "user", content: "Hi", timestamp: 1 },
-      {
-        role: "assistant",
-        content: [{ type: "text", text: "Hello!" }],
-        timestamp: 2,
-        ...ASSISTANT_DEFAULTS,
-      },
-      { role: "user", content: "Bye", timestamp: 3 },
-    ],
-  });
-
-  assert.equal(buildRunRequest(params).conversationState.turns.length, 1);
+  assert.equal(defs.length, 1);
+  assert.equal(defs[0]?.toolName, "codemode");
+  assert.ok((defs[0]?.inputSchema.length ?? 0) > 0);
 });

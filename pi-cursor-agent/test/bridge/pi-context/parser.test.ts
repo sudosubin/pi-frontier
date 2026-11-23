@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parsePiSystemPrompt } from "../../../src/bridge/pi-context/parser";
+import { McpToolDefinition } from "../../../src/__generated__/agent/v1/mcp_pb";
+import {
+  parsePiSystemPrompt,
+  parsePiSystemState,
+} from "../../../src/bridge/pi-context/parser";
 
 const PI_DOCS_BLOCK = [
   "Pi documentation (read only when the user asks about pi itself):",
@@ -141,4 +145,52 @@ test("unescapes XML entities in skill data", () => {
   );
 
   assert.equal(result.skills[0]?.description, '<html> & "q"');
+});
+
+test("parses Pi 1.6 structured sections including project_instructions, mcp_servers, and custom sections", () => {
+  const result = parsePiSystemState(
+    {
+      content: "",
+      sections: {
+        preamble:
+          "You are a coding assistant running inside pi, a coding agent harness. Help users inspect files, run commands, and modify code.",
+        tools: "<tools>\n- codemode: Run JS\n</tools>",
+        rules: "<rules>\n- Use codemode for batching\n</rules>",
+        mcp_servers:
+          "<mcp_servers>\n- mcp__demo (codemode): Demo MCP\n</mcp_servers>",
+        project_context:
+          '<project_context>\nProject-specific instructions:\n\n<project_instructions path="/repo/AGENTS.md">\nRun tests before commit.\n</project_instructions>\n</project_context>',
+        skills:
+          "<skills>\n<available_skills>\n<skill><name>doc-figures</name><description>Generate figures</description><location>/skills/doc-figures/SKILL.md</location></skill>\n</available_skills>\n</skills>",
+        custom_ext: "<custom_ext>\nExtension instructions\n</custom_ext>",
+      },
+      fullText: "structured",
+      hasStructuredSections: true,
+    },
+    [
+      new McpToolDefinition({
+        name: "codemode",
+        toolName: "codemode",
+        providerIdentifier: "pi-agent",
+        description: "Run JavaScript sandbox",
+      }),
+    ],
+  );
+
+  assert.equal(result.contextFiles.length, 1);
+  assert.equal(result.contextFiles[0]?.path, "/repo/AGENTS.md");
+  assert.equal(result.contextFiles[0]?.content, "Run tests before commit.");
+  assert.equal(result.skills.length, 1);
+  assert.equal(result.skills[0]?.name, "doc-figures");
+
+  const rulesByPath = new Map(
+    (result.instructionRules ?? []).map((r) => [r.path, r.content]),
+  );
+  assert.ok(rulesByPath.get("pi-agent/mcp-servers")?.includes("mcp__demo"));
+  assert.ok(rulesByPath.get("pi-agent/rules")?.includes("Use codemode"));
+  assert.ok(rulesByPath.get("pi-agent/tools")?.includes("codemode"));
+  assert.equal(
+    rulesByPath.get("pi-agent/section/custom_ext"),
+    "Extension instructions",
+  );
 });

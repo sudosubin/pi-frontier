@@ -6,6 +6,7 @@ import {
   ShellRejected,
   ShellStream as ShellStreamClass,
   ShellStreamExit,
+  ShellStreamStderr,
   ShellStreamStdout,
 } from "../../../__generated__/agent/v1/shell_exec_pb";
 import type { StreamExecutor } from "../../../vendor/agent-exec";
@@ -15,7 +16,7 @@ import {
   type PiToolContext,
 } from "../local-resource-provider/types";
 import { requestToolExecution } from "../tool-bridge";
-import { confirmIfDangerous } from "./shell";
+import { buildScopedShellCommand, confirmIfDangerous } from "./shell";
 
 export class LocalShellStreamExecutor
   implements StreamExecutor<ShellArgs, ShellStream>
@@ -83,6 +84,11 @@ export class LocalShellStreamExecutor
 
     const timeoutSeconds =
       args.timeout && args.timeout > 0 ? args.timeout : undefined;
+    const command = buildScopedShellCommand(
+      args.command,
+      args.workingDirectory,
+      this.ctx.cwd,
+    );
 
     const piResult = await requestToolExecution(
       this.ctx.getChannel?.() ?? null,
@@ -91,7 +97,7 @@ export class LocalShellStreamExecutor
         cursorExecType: "shell-stream",
         piToolName: "bash",
         piToolArgs: {
-          command: args.command,
+          command,
           ...(timeoutSeconds != null ? { timeout: timeoutSeconds } : {}),
         },
       },
@@ -99,12 +105,21 @@ export class LocalShellStreamExecutor
 
     const text = toolResultToText(piResult);
     if (text) {
-      yield new ShellStreamClass({
-        event: {
-          case: "stdout",
-          value: new ShellStreamStdout({ data: text }),
-        },
-      });
+      if (piResult.isError) {
+        yield new ShellStreamClass({
+          event: {
+            case: "stderr",
+            value: new ShellStreamStderr({ data: text }),
+          },
+        });
+      } else {
+        yield new ShellStreamClass({
+          event: {
+            case: "stdout",
+            value: new ShellStreamStdout({ data: text }),
+          },
+        });
+      }
     }
 
     yield new ShellStreamClass({
@@ -112,6 +127,7 @@ export class LocalShellStreamExecutor
         case: "exit",
         value: new ShellStreamExit({
           code: piResult.isError ? 1 : 0,
+          cwd: workingDirectory,
         }),
       },
     });

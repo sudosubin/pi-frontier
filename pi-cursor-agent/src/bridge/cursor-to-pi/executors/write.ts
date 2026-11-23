@@ -49,7 +49,9 @@ function buildWriteResultFromToolResult(
         path: args.path,
         linesCreated,
         fileSize,
-        ...(args.returnFileContentAfterWrite ? { fullFileContent: text } : {}),
+        ...(args.returnFileContentAfterWrite
+          ? { fullFileContent: fileText }
+          : {}),
       }),
     },
   });

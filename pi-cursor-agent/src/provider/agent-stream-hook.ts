@@ -4,6 +4,7 @@ export type ChannelEvent =
   | { kind: "content"; data: ContentEvent }
   | { kind: "tool-exec-request"; request: ToolExecRequest }
   | { kind: "token-delta"; tokens: number }
+  | { kind: "cursor-error"; error: Error }
   | { kind: "cursor-done" };
 
 export interface ContentEvent {
@@ -50,7 +51,7 @@ export class LiveEventChannel {
 export interface LiveSession {
   channel: LiveEventChannel;
   cursorRunPromise: Promise<void>;
-  flushSessionState: () => Promise<void>;
+  flushSessionState: (lastAssistantTimestamp?: number) => Promise<void>;
   abort: (reason?: string) => void;
   startTime: number;
   firstTokenTime?: number;

@@ -1,11 +1,16 @@
 import { Value } from "@bufbuild/protobuf";
-import type { ToolResultMessage } from "@mariozechner/pi-ai";
+import type {
+  ImageContent,
+  TextContent,
+  ToolResultMessage,
+} from "@mariozechner/pi-ai";
 import type {
   McpArgs,
   McpResult,
 } from "../../../__generated__/agent/v1/mcp_tool_pb";
 import {
   McpError,
+  McpImageContent,
   McpResult as McpResultClass,
   McpSuccess,
   McpTextContent,
@@ -13,7 +18,6 @@ import {
   McpToolResultContentItem,
 } from "../../../__generated__/agent/v1/mcp_tool_pb";
 import type { Executor } from "../../../vendor/agent-exec";
-import { toolResultToText } from "../../shared/tool-result";
 import {
   decodeToolCallId,
   type PiToolContext,
@@ -47,21 +51,66 @@ function decodeMcpArgs(args: {
   return result;
 }
 
-/** Convert a Pi ToolResultMessage to a Cursor McpResult. */
-function buildMcpResultFromToolResult(result: ToolResultMessage): McpResult {
-  const text = toolResultToText(result);
+/** Resolve the Pi tool name from Cursor's McpArgs (`toolName` or prefixed `name`). */
+export function resolveMcpToolName(
+  args: Pick<McpArgs, "name" | "toolName" | "providerIdentifier">,
+): string {
+  if (args.toolName) return args.toolName;
+  if (!args.name) return "";
+  const prefix = `${args.providerIdentifier || "pi-agent"}-`;
+  if (args.name.startsWith(prefix)) {
+    return args.name.slice(prefix.length);
+  }
+  return args.name;
+}
+
+/** Convert a Pi ToolResultMessage (including text and image blocks) to a Cursor McpResult. */
+export function buildMcpResultFromToolResult(
+  result: ToolResultMessage,
+): McpResult {
+  const items: McpToolResultContentItem[] = [];
+
+  for (const block of result.content as Array<TextContent | ImageContent>) {
+    if (block.type === "text") {
+      items.push(
+        new McpToolResultContentItem({
+          content: {
+            case: "text",
+            value: new McpTextContent({ text: block.text }),
+          },
+        }),
+      );
+    } else if (block.type === "image" && block.data) {
+      items.push(
+        new McpToolResultContentItem({
+          content: {
+            case: "image",
+            value: new McpImageContent({
+              data: new Uint8Array(Buffer.from(block.data, "base64")),
+              mimeType: block.mimeType || "image/png",
+            }),
+          },
+        }),
+      );
+    }
+  }
+
+  if (items.length === 0) {
+    items.push(
+      new McpToolResultContentItem({
+        content: {
+          case: "text",
+          value: new McpTextContent({ text: "(no output)" }),
+        },
+      }),
+    );
+  }
+
   return new McpResultClass({
     result: {
       case: "success",
       value: new McpSuccess({
-        content: [
-          new McpToolResultContentItem({
-            content: {
-              case: "text",
-              value: new McpTextContent({ text: text || "(no output)" }),
-            },
-          }),
-        ],
+        content: items,
         isError: result.isError,
       }),
     },
@@ -70,14 +119,19 @@ function buildMcpResultFromToolResult(result: ToolResultMessage): McpResult {
 
 export class LocalMcpExecutor implements Executor<McpArgs, McpResult> {
   private readonly ctx: PiToolContext;
+  private readonly declaredToolNames: ReadonlySet<string>;
 
-  constructor(ctx: PiToolContext) {
+  constructor(
+    ctx: PiToolContext,
+    declaredToolNames: ReadonlySet<string> = new Set(),
+  ) {
     this.ctx = ctx;
+    this.declaredToolNames = declaredToolNames;
   }
 
   async execute(_ctx: unknown, args: McpArgs): Promise<McpResult> {
     const toolCallId = decodeToolCallId(args.toolCallId);
-    const toolName = args.toolName || args.name;
+    const toolName = resolveMcpToolName(args);
 
     if (!toolName) {
       return new McpResultClass({
@@ -88,13 +142,17 @@ export class LocalMcpExecutor implements Executor<McpArgs, McpResult> {
       });
     }
 
-    if (!this.ctx.getActiveTools().has(toolName)) {
+    const activeTools = this.ctx.getActiveTools();
+    if (!activeTools.has(toolName) && !this.declaredToolNames.has(toolName)) {
+      const availableTools = Array.from(
+        new Set([...activeTools, ...this.declaredToolNames]),
+      );
       return new McpResultClass({
         result: {
           case: "toolNotFound",
           value: new McpToolNotFound({
             name: toolName,
-            availableTools: [...this.ctx.getActiveTools()],
+            availableTools,
           }),
         },
       });

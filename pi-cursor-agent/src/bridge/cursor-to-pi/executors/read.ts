@@ -1,4 +1,4 @@
-import type { ToolResultMessage } from "@mariozechner/pi-ai";
+import type { ImageContent, ToolResultMessage } from "@mariozechner/pi-ai";
 import type {
   ReadArgs,
   ReadResult,
@@ -31,6 +31,26 @@ export function buildReadResultFromToolResult(
       },
     });
   }
+
+  const imageBlock = result.content.find(
+    (item): item is ImageContent => item.type === "image" && Boolean(item.data),
+  );
+  if (imageBlock) {
+    const bytes = new Uint8Array(Buffer.from(imageBlock.data, "base64"));
+    return new ReadResultClass({
+      result: {
+        case: "success",
+        value: new ReadSuccess({
+          path,
+          totalLines: 0,
+          fileSize: BigInt(bytes.byteLength),
+          truncated: false,
+          output: { case: "data", value: bytes },
+        }),
+      },
+    });
+  }
+
   const totalLines = text ? text.split("\n").length : 0;
   return new ReadResultClass({
     result: {
